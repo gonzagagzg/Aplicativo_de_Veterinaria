@@ -1,0 +1,230 @@
+import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { endOfMonth, isSameDay, isWithinInterval, parseISO, startOfMonth } from 'date-fns'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { AlertTriangle, CalendarClock, DollarSign, Dog, Users } from 'lucide-react'
+import {
+  citasApi,
+  clientesApi,
+  facturasApi,
+  mascotasApi,
+  productosApi,
+  usuariosApi,
+  veterinariosApi,
+} from '@/shared/api/recursos'
+import { Badge, CabeceraPagina, Cargando, Tarjeta } from '@/shared/components/ui'
+import { formatearMoneda, indexarPor } from '@/shared/lib/utils'
+import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
+
+export function PaginaPanel() {
+  const { idEmpresa, nombreUsuario } = useSesion()
+
+  const citas = citasApi.useLista()
+  const clientes = clientesApi.useLista()
+  const mascotas = mascotasApi.useLista()
+  const productos = productosApi.useLista()
+  const facturas = facturasApi.useLista()
+  const veterinarios = veterinariosApi.useLista()
+  const usuarios = usuariosApi.useLista()
+
+  const porMascota = useMemo(() => indexarPor(mascotas.data, 'idMascota'), [mascotas.data])
+  const porUsuario = useMemo(() => indexarPor(usuarios.data, 'idUsuario'), [usuarios.data])
+
+  const metricas = useMemo(() => {
+    const hoy = new Date()
+    const citasEmpresa = filtrarPorEmpresa(citas.data, idEmpresa)
+    const facturasEmpresa = filtrarPorEmpresa(facturas.data, idEmpresa)
+    const productosEmpresa = filtrarPorEmpresa(productos.data, idEmpresa)
+
+    const citasHoy = citasEmpresa
+      .filter((c) => {
+        try {
+          return isSameDay(parseISO(c.fechaHora), hoy)
+        } catch {
+          return false
+        }
+      })
+      .sort((a, b) => a.fechaHora.localeCompare(b.fechaHora))
+
+    const intervaloMes = { start: startOfMonth(hoy), end: endOfMonth(hoy) }
+    const ventasMes = facturasEmpresa
+      .filter((f) => f.estado !== 'Anulada')
+      .filter((f) => {
+        try {
+          return isWithinInterval(parseISO(f.fecha), intervaloMes)
+        } catch {
+          return false
+        }
+      })
+      .reduce((suma, f) => suma + Number(f.total), 0)
+
+    return {
+      citasHoy,
+      pendientesHoy: citasHoy.filter((c) => c.estado === 'Pendiente').length,
+      clientes: filtrarPorEmpresa(clientes.data, idEmpresa).length,
+      mascotas: filtrarPorEmpresa(mascotas.data, idEmpresa).length,
+      ventasMes,
+      alertasStock: productosEmpresa.filter((p) => p.stockActual <= p.stockMinimo),
+    }
+  }, [citas.data, clientes.data, mascotas.data, productos.data, facturas.data, idEmpresa])
+
+  const nombreVeterinario = (idVeterinario: string) => {
+    const vet = (veterinarios.data ?? []).find((v) => v.idVeterinario === idVeterinario)
+    return vet ? (porUsuario.get(vet.idUsuario)?.nombres ?? '—') : '—'
+  }
+
+  if (citas.isLoading || facturas.isLoading) return <Cargando />
+
+  return (
+    <>
+      <CabeceraPagina
+        titulo={`Hola, ${nombreUsuario ?? ''}`}
+        descripcion={format(new Date(), "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}
+      />
+
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metrica
+          Icono={CalendarClock}
+          etiqueta="Citas hoy"
+          valor={String(metricas.citasHoy.length)}
+          detalle={`${metricas.pendientesHoy} pendientes`}
+          a="/citas"
+        />
+        <Metrica
+          Icono={Users}
+          etiqueta="Clientes"
+          valor={String(metricas.clientes)}
+          detalle="registrados"
+          a="/clientes"
+        />
+        <Metrica
+          Icono={Dog}
+          etiqueta="Mascotas"
+          valor={String(metricas.mascotas)}
+          detalle="en seguimiento"
+          a="/mascotas"
+        />
+        <Metrica
+          Icono={DollarSign}
+          etiqueta="Ventas del mes"
+          valor={formatearMoneda(metricas.ventasMes)}
+          detalle="facturas no anuladas"
+          a="/facturas"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Tarjeta
+            titulo="Agenda de hoy"
+            acciones={
+              <Link to="/citas" className="text-sm font-medium text-brand-700 hover:underline">
+                Ver semana
+              </Link>
+            }
+          >
+            {metricas.citasHoy.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">
+                No hay citas programadas para hoy.
+              </p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {metricas.citasHoy.map((cita) => (
+                  <li key={cita.idCita} className="flex items-center gap-4 py-2.5">
+                    <span className="w-12 shrink-0 text-sm font-semibold text-slate-900">
+                      {format(parseISO(cita.fechaHora), 'HH:mm')}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-slate-800">
+                        {porMascota.get(cita.idMascota)?.nombre ?? 'Mascota'}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        {nombreVeterinario(cita.idVeterinario)}
+                      </p>
+                    </div>
+                    <Badge
+                      tono={
+                        cita.estado === 'Atendida'
+                          ? 'exito'
+                          : cita.estado === 'Cancelada'
+                            ? 'peligro'
+                            : 'alerta'
+                      }
+                    >
+                      {cita.estado}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Tarjeta>
+        </div>
+
+        <Tarjeta
+          titulo="Alertas de stock"
+          acciones={
+            metricas.alertasStock.length > 0 ? (
+              <Badge tono="alerta">{metricas.alertasStock.length}</Badge>
+            ) : undefined
+          }
+        >
+          {metricas.alertasStock.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-500">
+              Todo el inventario está sobre el mínimo.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {metricas.alertasStock.slice(0, 6).map((p) => (
+                <li key={p.idProducto} className="flex items-start gap-2.5">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-slate-800">{p.nombre}</p>
+                    <p className="text-xs text-slate-500">
+                      {p.stockActual} en stock · mínimo {p.stockMinimo}
+                    </p>
+                  </div>
+                </li>
+              ))}
+              {metricas.alertasStock.length > 6 && (
+                <li>
+                  <Link to="/inventario" className="text-sm text-brand-700 hover:underline">
+                    Ver los {metricas.alertasStock.length} productos
+                  </Link>
+                </li>
+              )}
+            </ul>
+          )}
+        </Tarjeta>
+      </div>
+    </>
+  )
+}
+
+function Metrica({
+  Icono,
+  etiqueta,
+  valor,
+  detalle,
+  a,
+}: {
+  Icono: React.ComponentType<{ className?: string }>
+  etiqueta: string
+  valor: string
+  detalle: string
+  a: string
+}) {
+  return (
+    <Link
+      to={a}
+      className="rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-brand-300"
+    >
+      <div className="flex items-center gap-2 text-slate-500">
+        <Icono className="h-4 w-4" />
+        <span className="text-sm">{etiqueta}</span>
+      </div>
+      <p className="mt-2 text-2xl font-semibold text-slate-900">{valor}</p>
+      <p className="text-xs text-slate-500">{detalle}</p>
+    </Link>
+  )
+}
