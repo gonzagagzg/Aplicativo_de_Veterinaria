@@ -616,3 +616,153 @@ WHERE c.id_empresa = 'inserta la empresa'
 ORDER BY c.fecha_hora ASC;
 
 
+
+---SUPERUSUARIO---
+
+
+-- =========================================================================
+-- EMPRESA MATRIZ PARA SUPERUSUARIO
+-- =========================================================================
+
+INSERT INTO empresa (id_empresa, ruc, razon_social, direccion, activo) 
+VALUES (
+    '00000000-0000-0000-0000-000000000000', 
+    '9999999999001', 
+    'ADMINISTRADOR', 
+    'ADMIN', 
+    TRUE
+)
+ON CONFLICT (id_empresa) DO NOTHING;
+
+-- =========================================================================
+-- ROL DE SUPERUSUARIO Y PERMISOS
+-- =========================================================================
+
+INSERT INTO permiso (modulo, accion) VALUES
+('Empresas', 'Crear'),
+('Empresas', 'Ver'),
+('Empresas', 'Editar'),
+('Empresas', 'Eliminar'),
+('Superadmin', 'AccesoTotal')
+ON CONFLICT (modulo, accion) DO NOTHING;
+
+-- Insertamos el Rol de SuperUsuario
+INSERT INTO rol (nombre) 
+VALUES ('SuperUsuario')
+ON CONFLICT (nombre) DO NOTHING;
+
+-- =========================================================================
+-- ASIGNAR TODOS LOS PERMISOS AL SUPERUSUARIO
+-- =========================================================================
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+CROSS JOIN permiso p
+WHERE r.nombre = 'SuperUsuario'
+ON CONFLICT (id_rol, id_permiso) DO NOTHING;
+
+-- =========================================================================
+-- CREAR EL USUARIO SUPERADMINISTRADOR
+-- =========================================================================
+INSERT INTO usuario (id_usuario, id_empresa, id_rol, usuario, clave_hash, nombres, activo)
+VALUES (
+    'f1eebc99-9c0b-4ef8-bb6d-6bb9bd380f00',
+    '00000000-0000-0000-0000-000000000000', -- Pertenece a la Empresa Matriz
+    (SELECT id_rol FROM rol WHERE nombre = 'SuperUsuario'),
+    'superadmin',
+    '1234', -- Reemplazar por el Hash real
+    'Administrador del Sistema Global',
+    TRUE
+)
+ON CONFLICT (id_empresa, usuario) DO NOTHING;
+
+
+--Consultas para funciones del Superusuario
+
+-- =========================================================================
+-- ver veterinarias--
+-- =========================================================================
+-- Obtener todas las clínicas registradas y su resumen básico sirve para poner en tarjetas y seleccionar la clinica que desea administrar
+SELECT 
+    e.id_empresa,
+    e.ruc,
+    e.razon_social,
+    e.direccion,
+    e.activo,
+    COUNT(DISTINCT u.id_usuario) AS total_usuarios,
+    COUNT(DISTINCT c.id_cliente) AS total_clientes
+FROM empresa e
+LEFT JOIN usuario u ON e.id_empresa = u.id_empresa
+LEFT JOIN cliente c ON e.id_empresa = c.id_empresa
+GROUP BY e.id_empresa, e.ruc, e.razon_social, e.direccion, e.activo
+ORDER BY e.razon_social ASC;
+
+-- =========================================================================
+--ver tablas de veterinaria
+-- =========================================================================
+-- Conteo dinámico de registros por tabla para la empresa seleccionada
+-- Reemplazar ':id_empresa' por el UUID de la clínica seleccionada con comillas simples '''estas aquí ''el id de empresa''''' para que 
+--funcione con la tarjeta anterior debes poner un escuchador que permita captar 
+--la opción tomada anteriormente por el usuario y ponerla en la consulta con un placeholder
+
+SELECT 'Mascotas' AS modulo, COUNT(*) AS total_registros FROM mascota WHERE id_empresa = :id_empresa
+UNION ALL
+SELECT 'Citas' AS modulo, COUNT(*) AS total_registros FROM cita WHERE id_empresa = :id_empresa
+UNION ALL
+SELECT 'Historial Clínico' AS modulo, COUNT(*) AS total_registros FROM historial_clinico WHERE id_empresa = :id_empresa
+UNION ALL
+SELECT 'Facturas' AS modulo, COUNT(*) AS total_registros FROM factura WHERE id_empresa = :id_empresa
+UNION ALL
+SELECT 'Productos / Stock' AS modulo, COUNT(*) AS total_registros FROM producto WHERE id_empresa = :id_empresa
+UNION ALL
+SELECT 'Usuarios' AS modulo, COUNT(*) AS total_registros FROM usuario WHERE id_empresa = :id_empresa;
+
+-- =========================================================================
+--ver contenido de las tablas especificas 
+-- =========================================================================
+
+-- 1. Si selecciona la tabla MASCOTAS:
+SELECT 
+    m.id_mascota,
+    m.nombre AS mascota,
+    e.nombre AS especie,
+    r.nombre AS raza,
+    c.nombres AS dueno,
+    c.identificacion AS cedula_dueno
+FROM mascota m
+INNER JOIN cliente c ON m.id_cliente = c.id_cliente
+INNER JOIN raza r ON m.id_raza = r.id_raza
+INNER JOIN especie e ON r.id_especie = e.id_especie
+WHERE m.id_empresa = :id_empresa;
+
+-- 2. Si selecciona la tabla FACTURAS:
+SELECT 
+    f.id_factura,
+    f.fecha,
+    f.total,
+    f.estado,
+    c.nombres AS cliente,
+    u.nombres AS emitido_por
+FROM factura f
+INNER JOIN cliente c ON f.id_cliente = c.id_cliente
+INNER JOIN usuario u ON f.id_usuario = u.id_usuario
+WHERE f.id_empresa = :id_empresa
+ORDER BY f.fecha DESC;
+
+-- 3. Si selecciona la tabla INVENTARIO / PRODUCTOS:
+SELECT 
+    p.id_producto,
+    p.nombre AS producto,
+    cat.nombre AS categoria,
+    p.precio_unitario,
+    p.stock_actual,
+    p.stock_minimo,
+    sri.porcentaje AS iva
+FROM producto p
+INNER JOIN categoria cat ON p.id_categoria = cat.id_categoria
+INNER JOIN sri_iva sri ON p.id_iva = sri.id_iva
+WHERE p.id_empresa = :id_empresa;
+
+
+
