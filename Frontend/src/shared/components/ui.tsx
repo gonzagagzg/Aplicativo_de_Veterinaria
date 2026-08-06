@@ -7,10 +7,10 @@ import { cn } from '@/shared/lib/utils'
 type VarianteBoton = 'primario' | 'secundario' | 'peligro' | 'fantasma'
 
 const estilosBoton: Record<VarianteBoton, string> = {
-  primario: 'bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-500',
+  primario: 'bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-500 shadow-sm',
   secundario:
-    'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400',
-  peligro: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+    'bg-white text-slate-700 border border-slate-200 hover:bg-brand-50 hover:border-brand-200 focus-visible:ring-brand-400 shadow-sm',
+  peligro: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 shadow-sm',
   fantasma: 'text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-400',
 }
 
@@ -48,9 +48,9 @@ export function Boton({
 /* ------------------------------------------------------- Campos de formulario */
 
 const claseControl =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ' +
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 ' +
   'placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 ' +
-  'focus:ring-brand-500/20 disabled:bg-slate-50 disabled:text-slate-500'
+  'focus:ring-brand-500/15 disabled:bg-slate-50 disabled:text-slate-400 shadow-sm transition-colors'
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
@@ -89,12 +89,12 @@ export function Campo({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium text-slate-700">
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {etiqueta}
         {requerido && <span className="ml-0.5 text-red-500">*</span>}
       </span>
       {children}
-      {ayuda && !error && <span className="block text-xs text-slate-500">{ayuda}</span>}
+      {ayuda && !error && <span className="block text-xs text-slate-400">{ayuda}</span>}
       {error && <span className="block text-xs font-medium text-red-600">{error}</span>}
     </label>
   )
@@ -105,11 +105,11 @@ export function Campo({
 type TonoBadge = 'neutro' | 'exito' | 'alerta' | 'peligro' | 'info'
 
 const estilosBadge: Record<TonoBadge, string> = {
-  neutro: 'bg-slate-100 text-slate-700',
-  exito: 'bg-emerald-100 text-emerald-800',
-  alerta: 'bg-amber-100 text-amber-800',
-  peligro: 'bg-red-100 text-red-800',
-  info: 'bg-sky-100 text-sky-800',
+  neutro: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+  exito: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  alerta: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  peligro: 'bg-red-50 text-red-700 ring-1 ring-red-200',
+  info: 'bg-brand-50 text-brand-700 ring-1 ring-brand-200',
 }
 
 export function Badge({ tono = 'neutro', children }: { tono?: TonoBadge; children: ReactNode }) {
@@ -145,14 +145,14 @@ export function Modal({
   if (!abierto) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:p-8">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-brand-950/60 p-4 backdrop-blur-sm sm:p-8">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
-        className={cn('w-full rounded-xl bg-white shadow-xl', ancho)}
+        className={cn('w-full rounded-xl bg-white shadow-2xl ring-1 ring-slate-200', ancho)}
       >
-        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+        <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
           <div>
             <h2 className="text-base font-semibold text-slate-900">{titulo}</h2>
             {descripcion && <p className="mt-0.5 text-sm text-slate-500">{descripcion}</p>}
@@ -160,12 +160,12 @@ export function Modal({
           <button
             onClick={onCerrar}
             aria-label="Cerrar"
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="px-6 py-5">{children}</div>
       </div>
     </div>
   )
@@ -175,8 +175,8 @@ export function Modal({
 
 export function Cargando({ texto = 'Cargando…' }: { texto?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
-      <Loader2 className="h-4 w-4 animate-spin" />
+    <div className="flex items-center justify-center gap-2.5 py-16 text-sm text-slate-400">
+      <Loader2 className="h-4 w-4 animate-spin text-brand-500" />
       {texto}
     </div>
   )
@@ -185,7 +185,7 @@ export function Cargando({ texto = 'Cargando…' }: { texto?: string }) {
 export function MensajeError({ error }: { error: unknown }) {
   const mensaje = error instanceof Error ? error.message : 'Ocurrió un error inesperado'
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
       {mensaje}
     </div>
   )
@@ -193,7 +193,7 @@ export function MensajeError({ error }: { error: unknown }) {
 
 export function SinDatos({ mensaje = 'No hay registros para mostrar' }: { mensaje?: string }) {
   return (
-    <div className="py-12 text-center text-sm text-slate-500">{mensaje}</div>
+    <div className="py-16 text-center text-sm text-slate-400">{mensaje}</div>
   )
 }
 
@@ -209,9 +209,9 @@ export function CabeceraPagina({
   acciones?: ReactNode
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">{titulo}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{titulo}</h1>
         {descripcion && <p className="mt-1 text-sm text-slate-500">{descripcion}</p>}
       </div>
       {acciones && <div className="flex gap-2">{acciones}</div>}
@@ -231,10 +231,14 @@ export function Tarjeta({
   className?: string
 }) {
   return (
-    <section className={cn('rounded-xl border border-slate-200 bg-white', className)}>
+    <section className={cn('rounded-xl border border-slate-200 bg-white shadow-sm', className)}>
       {(titulo || acciones) && (
-        <header className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          {titulo && <h2 className="text-sm font-semibold text-slate-900">{titulo}</h2>}
+        <header className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+          {titulo && (
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {titulo}
+            </h2>
+          )}
           {acciones}
         </header>
       )}

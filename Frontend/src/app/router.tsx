@@ -1,5 +1,6 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from './layout/AppLayout'
+import { PaginaInicio } from '@/features/inicio/PaginaInicio'
 import { PaginaAcceso } from '@/features/acceso/PaginaAcceso'
 import { PaginaPanel } from '@/features/panel/PaginaPanel'
 import { PaginaCitas } from '@/features/citas/PaginaCitas'
@@ -29,9 +30,10 @@ function RequiereSesion({ children }: { children: React.ReactNode }) {
 }
 
 export const router = createBrowserRouter([
+  { path: '/', element: <PaginaInicio /> },
   { path: '/acceso', element: <PaginaAcceso /> },
   {
-    path: '/',
+    path: '/app',
     element: (
       <RequiereSesion>
         <AppLayout />
@@ -53,7 +55,7 @@ export const router = createBrowserRouter([
       { path: 'veterinarios', element: <PaginaVeterinarios /> },
       { path: 'accesos', element: <PaginaAccesos /> },
       { path: 'empresas', element: <PaginaEmpresas /> },
-      { path: '*', element: <Navigate to="/" replace /> },
+      { path: '*', element: <Navigate to="/app" replace /> },
     ],
   },
 ])
