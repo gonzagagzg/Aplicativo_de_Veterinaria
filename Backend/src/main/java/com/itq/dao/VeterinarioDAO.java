@@ -2,6 +2,7 @@ package com.itq.dao;
 
 import com.itq.config.ConexionBD;
 import com.itq.model.Veterinario;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,62 +10,310 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class VeterinarioDAO {
+
+    // =========================================================
+    // SUPERUSUARIO - LISTADO GLOBAL
+    // =========================================================
+
     public List<Veterinario> listar() throws SQLException {
-        String sql = "SELECT id_veterinario, id_usuario, id_empresa, especialidad FROM veterinario ORDER BY id_veterinario";
+
+        String sql = """
+                SELECT id_veterinario, id_usuario,
+                       id_empresa, especialidad
+                FROM veterinario
+                ORDER BY id_veterinario
+                """;
+
         List<Veterinario> lista = new ArrayList<>();
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) lista.add(mapear(rs));
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()
+        ) {
+
+            while (rs.next()) {
+                lista.add(mapear(rs));
+            }
         }
+
         return lista;
     }
 
-    public Optional<Veterinario> buscarPorId(UUID idVeterinario) throws SQLException {
-        String sql = "SELECT id_veterinario, id_usuario, id_empresa, especialidad FROM veterinario WHERE id_veterinario = ?";
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
+    // =========================================================
+    // USUARIO NORMAL - LISTADO POR EMPRESA
+    // =========================================================
+
+    public List<Veterinario> listarPorEmpresa(UUID idEmpresa)
+            throws SQLException {
+
+        String sql = """
+                SELECT id_veterinario, id_usuario,
+                       id_empresa, especialidad
+                FROM veterinario
+                WHERE id_empresa = ?
+                ORDER BY id_veterinario
+                """;
+
+        List<Veterinario> lista = new ArrayList<>();
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(1, idEmpresa);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    lista.add(mapear(rs));
+                }
+            }
+        }
+
+        return lista;
+    }
+
+    // =========================================================
+    // BÚSQUEDA
+    // =========================================================
+
+    public Optional<Veterinario> buscarPorId(UUID idVeterinario)
+            throws SQLException {
+
+        String sql = """
+                SELECT id_veterinario, id_usuario,
+                       id_empresa, especialidad
+                FROM veterinario
+                WHERE id_veterinario = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
             ps.setObject(1, idVeterinario);
-            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? Optional.of(mapear(rs)) : Optional.empty(); }
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                return rs.next()
+                        ? Optional.of(mapear(rs))
+                        : Optional.empty();
+            }
         }
     }
 
-    public Veterinario insertar(Veterinario obj) throws SQLException {
-        String sql = "INSERT INTO veterinario (id_usuario, id_empresa, especialidad) VALUES (?, ?, ?) RETURNING id_veterinario";
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setObject(1, obj.getIdUsuario());
-            ps.setObject(2, obj.getIdEmpresa());
-            ps.setObject(3, obj.getEspecialidad());
+    public Optional<Veterinario> buscarPorIdYEmpresa(
+            UUID idVeterinario,
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id_veterinario, id_usuario,
+                       id_empresa, especialidad
+                FROM veterinario
+                WHERE id_veterinario = ?
+                  AND id_empresa = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(1, idVeterinario);
+            ps.setObject(2, idEmpresa);
+
             try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) throw new SQLException("No se generó la clave primaria");
-                obj.setIdVeterinario(rs.getObject("id_veterinario", UUID.class));
+
+                return rs.next()
+                        ? Optional.of(mapear(rs))
+                        : Optional.empty();
             }
         }
+    }
+
+    // =========================================================
+    // CREAR
+    // =========================================================
+
+    public Veterinario insertar(Veterinario obj)
+            throws SQLException {
+
+        String sql = """
+                INSERT INTO veterinario
+                (id_usuario, id_empresa, especialidad)
+                VALUES (?, ?, ?)
+                RETURNING id_veterinario
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(1, obj.getIdUsuario());
+            ps.setObject(2, obj.getIdEmpresa());
+            ps.setString(3, obj.getEspecialidad());
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (!rs.next()) {
+                    throw new SQLException(
+                            "No se generó la clave primaria"
+                    );
+                }
+
+                obj.setIdVeterinario(
+                        rs.getObject(
+                                "id_veterinario",
+                                UUID.class
+                        )
+                );
+            }
+        }
+
         return obj;
     }
 
-    public boolean actualizar(Veterinario obj) throws SQLException {
-        String sql = "UPDATE veterinario SET id_usuario = ?, id_empresa = ?, especialidad = ? WHERE id_veterinario = ?";
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
+    // =========================================================
+    // ACTUALIZAR
+    // =========================================================
+
+    public boolean actualizar(Veterinario obj)
+            throws SQLException {
+
+        String sql = """
+                UPDATE veterinario
+                SET id_usuario = ?,
+                    id_empresa = ?,
+                    especialidad = ?
+                WHERE id_veterinario = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
             ps.setObject(1, obj.getIdUsuario());
             ps.setObject(2, obj.getIdEmpresa());
-            ps.setObject(3, obj.getEspecialidad());
+            ps.setString(3, obj.getEspecialidad());
             ps.setObject(4, obj.getIdVeterinario());
+
             return ps.executeUpdate() > 0;
         }
     }
 
-    public boolean eliminar(UUID idVeterinario) throws SQLException {
-        String sql = "DELETE FROM veterinario WHERE id_veterinario = ?";
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
+    public boolean actualizarPorEmpresa(
+            Veterinario obj,
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                UPDATE veterinario
+                SET id_usuario = ?,
+                    especialidad = ?
+                WHERE id_veterinario = ?
+                  AND id_empresa = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(1, obj.getIdUsuario());
+            ps.setString(2, obj.getEspecialidad());
+            ps.setObject(3, obj.getIdVeterinario());
+            ps.setObject(4, idEmpresa);
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================================================
+    // ELIMINAR
+    // =========================================================
+
+    public boolean eliminar(UUID idVeterinario)
+            throws SQLException {
+
+        String sql = """
+                DELETE FROM veterinario
+                WHERE id_veterinario = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
             ps.setObject(1, idVeterinario);
+
             return ps.executeUpdate() > 0;
         }
     }
 
-    private Veterinario mapear(ResultSet rs) throws SQLException {
+    public boolean eliminarPorEmpresa(
+            UUID idVeterinario,
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                DELETE FROM veterinario
+                WHERE id_veterinario = ?
+                  AND id_empresa = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(1, idVeterinario);
+            ps.setObject(2, idEmpresa);
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================================================
+    // MAPEO
+    // =========================================================
+
+    private Veterinario mapear(ResultSet rs)
+            throws SQLException {
+
         Veterinario obj = new Veterinario();
-        obj.setIdVeterinario(rs.getObject("id_veterinario", UUID.class));
-        obj.setIdUsuario(rs.getObject("id_usuario", UUID.class));
-        obj.setIdEmpresa(rs.getObject("id_empresa", UUID.class));
-        obj.setEspecialidad(rs.getString("especialidad"));
+
+        obj.setIdVeterinario(
+                rs.getObject(
+                        "id_veterinario",
+                        UUID.class
+                )
+        );
+
+        obj.setIdUsuario(
+                rs.getObject(
+                        "id_usuario",
+                        UUID.class
+                )
+        );
+
+        obj.setIdEmpresa(
+                rs.getObject(
+                        "id_empresa",
+                        UUID.class
+                )
+        );
+
+        obj.setEspecialidad(
+                rs.getString("especialidad")
+        );
+
         return obj;
     }
 }

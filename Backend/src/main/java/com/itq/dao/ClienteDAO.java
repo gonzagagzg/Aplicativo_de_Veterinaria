@@ -2,6 +2,7 @@ package com.itq.dao;
 
 import com.itq.config.ConexionBD;
 import com.itq.model.Cliente;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,62 +10,619 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class ClienteDAO {
-    public List<Cliente> listar() throws SQLException {
-        String sql = "SELECT id_cliente, id_empresa, identificacion, nombres FROM cliente ORDER BY id_cliente";
-        List<Cliente> lista = new ArrayList<>();
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) lista.add(mapear(rs));
+
+    // =========================================================
+    // SUPERUSUARIO - LISTADO COMPLETO
+    // Se mantiene por compatibilidad
+    // =========================================================
+
+    public List<Cliente> listar()
+            throws SQLException {
+
+        String sql = """
+                SELECT id_cliente,
+                       id_empresa,
+                       identificacion,
+                       nombres
+                FROM cliente
+                ORDER BY id_cliente
+                """;
+
+        List<Cliente> lista =
+                new ArrayList<>();
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql);
+
+                ResultSet rs =
+                        ps.executeQuery()
+        ) {
+
+            while (rs.next()) {
+                lista.add(mapear(rs));
+            }
         }
+
         return lista;
     }
 
-    public Optional<Cliente> buscarPorId(UUID idCliente) throws SQLException {
-        String sql = "SELECT id_cliente, id_empresa, identificacion, nombres FROM cliente WHERE id_cliente = ?";
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setObject(1, idCliente);
-            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? Optional.of(mapear(rs)) : Optional.empty(); }
+    // =========================================================
+    // SUPERUSUARIO - LISTADO PAGINADO
+    // =========================================================
+
+    public List<Cliente> listarPaginado(
+            int limite,
+            int offset
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id_cliente,
+                       id_empresa,
+                       identificacion,
+                       nombres
+                FROM cliente
+                ORDER BY id_cliente
+                LIMIT ?
+                OFFSET ?
+                """;
+
+        List<Cliente> lista =
+                new ArrayList<>();
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                while (rs.next()) {
+                    lista.add(mapear(rs));
+                }
+            }
+        }
+
+        return lista;
+    }
+
+    // =========================================================
+    // SUPERUSUARIO - TOTAL REGISTROS
+    // =========================================================
+
+    public long contar()
+            throws SQLException {
+
+        String sql = """
+                SELECT COUNT(*) AS total
+                FROM cliente
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql);
+
+                ResultSet rs =
+                        ps.executeQuery()
+        ) {
+
+            rs.next();
+
+            return rs.getLong("total");
         }
     }
 
-    public Cliente insertar(Cliente obj) throws SQLException {
-        String sql = "INSERT INTO cliente (id_empresa, identificacion, nombres) VALUES (?, ?, ?) RETURNING id_cliente";
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setObject(1, obj.getIdEmpresa());
-            ps.setObject(2, obj.getIdentificacion());
-            ps.setObject(3, obj.getNombres());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) throw new SQLException("No se generó la clave primaria");
-                obj.setIdCliente(rs.getObject("id_cliente", UUID.class));
+    // =========================================================
+    // SUPERUSUARIO - BUSCAR POR ID
+    // =========================================================
+
+    public Optional<Cliente> buscarPorId(
+            UUID idCliente
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id_cliente,
+                       id_empresa,
+                       identificacion,
+                       nombres
+                FROM cliente
+                WHERE id_cliente = ?
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    idCliente
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                return rs.next()
+                        ? Optional.of(mapear(rs))
+                        : Optional.empty();
             }
         }
+    }
+
+    // =========================================================
+    // USUARIO DE VETERINARIA - LISTADO COMPLETO
+    // Se mantiene por compatibilidad
+    // =========================================================
+
+    public List<Cliente> listarPorEmpresa(
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id_cliente,
+                       id_empresa,
+                       identificacion,
+                       nombres
+                FROM cliente
+                WHERE id_empresa = ?
+                ORDER BY id_cliente
+                """;
+
+        List<Cliente> lista =
+                new ArrayList<>();
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    idEmpresa
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                while (rs.next()) {
+                    lista.add(mapear(rs));
+                }
+            }
+        }
+
+        return lista;
+    }
+
+    // =========================================================
+    // USUARIO DE VETERINARIA - LISTADO PAGINADO
+    // =========================================================
+
+    public List<Cliente> listarPorEmpresaPaginado(
+            UUID idEmpresa,
+            int limite,
+            int offset
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id_cliente,
+                       id_empresa,
+                       identificacion,
+                       nombres
+                FROM cliente
+                WHERE id_empresa = ?
+                ORDER BY id_cliente
+                LIMIT ?
+                OFFSET ?
+                """;
+
+        List<Cliente> lista =
+                new ArrayList<>();
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    idEmpresa
+            );
+
+            ps.setInt(
+                    2,
+                    limite
+            );
+
+            ps.setInt(
+                    3,
+                    offset
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                while (rs.next()) {
+                    lista.add(mapear(rs));
+                }
+            }
+        }
+
+        return lista;
+    }
+
+    // =========================================================
+    // USUARIO DE VETERINARIA - TOTAL REGISTROS
+    // =========================================================
+
+    public long contarPorEmpresa(
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                SELECT COUNT(*) AS total
+                FROM cliente
+                WHERE id_empresa = ?
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    idEmpresa
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                rs.next();
+
+                return rs.getLong(
+                        "total"
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // USUARIO DE VETERINARIA - BUSCAR POR ID
+    // =========================================================
+
+    public Optional<Cliente> buscarPorIdYEmpresa(
+            UUID idCliente,
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id_cliente,
+                       id_empresa,
+                       identificacion,
+                       nombres
+                FROM cliente
+                WHERE id_cliente = ?
+                  AND id_empresa = ?
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    idCliente
+            );
+
+            ps.setObject(
+                    2,
+                    idEmpresa
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                return rs.next()
+                        ? Optional.of(mapear(rs))
+                        : Optional.empty();
+            }
+        }
+    }
+
+    // =========================================================
+    // CREAR
+    // =========================================================
+
+    public Cliente insertar(
+            Cliente obj
+    ) throws SQLException {
+
+        String sql = """
+                INSERT INTO cliente
+                (
+                    id_empresa,
+                    identificacion,
+                    nombres
+                )
+                VALUES (?, ?, ?)
+                RETURNING id_cliente
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    obj.getIdEmpresa()
+            );
+
+            ps.setString(
+                    2,
+                    obj.getIdentificacion()
+            );
+
+            ps.setString(
+                    3,
+                    obj.getNombres()
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                if (!rs.next()) {
+
+                    throw new SQLException(
+                            "No se generó la clave primaria"
+                    );
+                }
+
+                obj.setIdCliente(
+                        rs.getObject(
+                                "id_cliente",
+                                UUID.class
+                        )
+                );
+            }
+        }
+
         return obj;
     }
 
-    public boolean actualizar(Cliente obj) throws SQLException {
-        String sql = "UPDATE cliente SET id_empresa = ?, identificacion = ?, nombres = ? WHERE id_cliente = ?";
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setObject(1, obj.getIdEmpresa());
-            ps.setObject(2, obj.getIdentificacion());
-            ps.setObject(3, obj.getNombres());
-            ps.setObject(4, obj.getIdCliente());
+    // =========================================================
+    // ACTUALIZAR - SUPERUSUARIO
+    // =========================================================
+
+    public boolean actualizar(
+            Cliente obj
+    ) throws SQLException {
+
+        String sql = """
+                UPDATE cliente
+                SET id_empresa = ?,
+                    identificacion = ?,
+                    nombres = ?
+                WHERE id_cliente = ?
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    obj.getIdEmpresa()
+            );
+
+            ps.setString(
+                    2,
+                    obj.getIdentificacion()
+            );
+
+            ps.setString(
+                    3,
+                    obj.getNombres()
+            );
+
+            ps.setObject(
+                    4,
+                    obj.getIdCliente()
+            );
+
             return ps.executeUpdate() > 0;
         }
     }
 
-    public boolean eliminar(UUID idCliente) throws SQLException {
-        String sql = "DELETE FROM cliente WHERE id_cliente = ?";
-        try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setObject(1, idCliente);
+    // =========================================================
+    // ACTUALIZAR - EMPRESA
+    // =========================================================
+
+    public boolean actualizarPorEmpresa(
+            Cliente obj,
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                UPDATE cliente
+                SET identificacion = ?,
+                    nombres = ?
+                WHERE id_cliente = ?
+                  AND id_empresa = ?
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    obj.getIdentificacion()
+            );
+
+            ps.setString(
+                    2,
+                    obj.getNombres()
+            );
+
+            ps.setObject(
+                    3,
+                    obj.getIdCliente()
+            );
+
+            ps.setObject(
+                    4,
+                    idEmpresa
+            );
+
             return ps.executeUpdate() > 0;
         }
     }
 
-    private Cliente mapear(ResultSet rs) throws SQLException {
-        Cliente obj = new Cliente();
-        obj.setIdCliente(rs.getObject("id_cliente", UUID.class));
-        obj.setIdEmpresa(rs.getObject("id_empresa", UUID.class));
-        obj.setIdentificacion(rs.getString("identificacion"));
-        obj.setNombres(rs.getString("nombres"));
+    // =========================================================
+    // ELIMINAR - SUPERUSUARIO
+    // =========================================================
+
+    public boolean eliminar(
+            UUID idCliente
+    ) throws SQLException {
+
+        String sql = """
+                DELETE FROM cliente
+                WHERE id_cliente = ?
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    idCliente
+            );
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================================================
+    // ELIMINAR - EMPRESA
+    // =========================================================
+
+    public boolean eliminarPorEmpresa(
+            UUID idCliente,
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                DELETE FROM cliente
+                WHERE id_cliente = ?
+                  AND id_empresa = ?
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
+                    idCliente
+            );
+
+            ps.setObject(
+                    2,
+                    idEmpresa
+            );
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================================================
+    // MAPEO
+    // =========================================================
+
+    private Cliente mapear(
+            ResultSet rs
+    ) throws SQLException {
+
+        Cliente obj =
+                new Cliente();
+
+        obj.setIdCliente(
+                rs.getObject(
+                        "id_cliente",
+                        UUID.class
+                )
+        );
+
+        obj.setIdEmpresa(
+                rs.getObject(
+                        "id_empresa",
+                        UUID.class
+                )
+        );
+
+        obj.setIdentificacion(
+                rs.getString(
+                        "identificacion"
+                )
+        );
+
+        obj.setNombres(
+                rs.getString(
+                        "nombres"
+                )
+        );
+
         return obj;
     }
 }
