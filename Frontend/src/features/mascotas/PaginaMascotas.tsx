@@ -2,14 +2,15 @@ import { useMemo } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PaginaCrud } from '@/shared/components/crud/PaginaCrud'
 import { calcularEdad, formatearFecha, indexarPor } from '@/shared/lib/utils'
-import { clientesApi, especiesApi, mascotasApi, razasApi } from '@/shared/api/recursos'
+import { especiesApi, mascotasApi, razasApi } from '@/shared/api/recursos'
+import { useClientesTodos } from '@/features/clientes/api'
 import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
 import type { Mascota } from '@/shared/types/api'
 
 export function PaginaMascotas() {
   const idEmpresa = useSesion((s) => s.idEmpresa)
 
-  const clientes = clientesApi.useLista()
+  const clientes = useClientesTodos()
   const razas = razasApi.useLista()
   const especies = especiesApi.useLista()
 

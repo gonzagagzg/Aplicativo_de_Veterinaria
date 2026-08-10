@@ -4,13 +4,13 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { ClipboardList, Plus, Trash2 } from 'lucide-react'
 import {
   citasApi,
-  clientesApi,
   historialesApi,
   mascotasApi,
   productosApi,
   recetaDetallesApi,
   recetasApi,
 } from '@/shared/api/recursos'
+import { useClientesTodos } from '@/features/clientes/api'
 import { TablaDatos } from '@/shared/components/TablaDatos'
 import {
   Badge,
@@ -46,7 +46,7 @@ export function PaginaHistoriales() {
   const historiales = historialesApi.useLista()
   const citas = citasApi.useLista()
   const mascotas = mascotasApi.useLista()
-  const clientes = clientesApi.useLista()
+  const clientes = useClientesTodos()
 
   const porCita = useMemo(() => indexarPor(citas.data, 'idCita'), [citas.data])
   const porMascota = useMemo(() => indexarPor(mascotas.data, 'idMascota'), [mascotas.data])

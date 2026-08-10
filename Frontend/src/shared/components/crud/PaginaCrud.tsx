@@ -4,7 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { TablaDatos } from '../TablaDatos'
 import { Boton, CabeceraPagina, Cargando, MensajeError, Modal } from '../ui'
 import { FormularioCrud } from './FormularioCrud'
-import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
+import { esSuperUsuario, filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
 import type { ConfiguracionCrud } from './tipos'
 
 /**
@@ -26,6 +26,15 @@ export function PaginaCrud<T extends object>({
   valoresBase,
 }: ConfiguracionCrud<T>) {
   const idEmpresa = useSesion((s) => s.idEmpresa)
+  const rol = useSesion((s) => s.rol)
+  // El SuperUsuario no tiene una empresa propia: su token trae un UUID
+  // placeholder ("00000000-...") en vez de null (ver AuthService). Si se
+  // tratara como una empresa real aquí, se filtrarían de la lista TODOS los
+  // registros reales (ninguno pertenece a ese id) y se le asignaría ese
+  // tenant falso a cualquier alta — el backend ya le devuelve/permite ver
+  // todo sin filtrar (esSuperUsuario en cada Servlet), así que en el
+  // cliente simplemente no se aplica ni el filtro ni la inyección.
+  const esSuper = esSuperUsuario(rol)
 
   const [modalAbierto, setModalAbierto] = useState(false)
   const [registroEditado, setRegistroEditado] = useState<T | null>(null)
@@ -38,10 +47,10 @@ export function PaginaCrud<T extends object>({
 
   const datos = useMemo(() => {
     const registros = (lista.data ?? []) as T[]
-    return multiEmpresa
+    return multiEmpresa && !esSuper
       ? (filtrarPorEmpresa(registros as { idEmpresa?: string }[], idEmpresa) as T[])
       : registros
-  }, [lista.data, multiEmpresa, idEmpresa])
+  }, [lista.data, multiEmpresa, idEmpresa, esSuper])
 
   const columnasConAcciones = useMemo<ColumnDef<T, unknown>[]>(
     () => [
@@ -101,7 +110,11 @@ export function PaginaCrud<T extends object>({
       )
     } else {
       const payload: Record<string, unknown> = { ...valoresBase, ...datosFormulario }
-      if (multiEmpresa && idEmpresa) payload.idEmpresa = idEmpresa
+      // Si es SuperUsuario no se envía idEmpresa: el backend lo exige
+      // explícito y estas pantallas no tienen selector de empresa, así que
+      // es preferible que rechace la alta con un mensaje claro a que quede
+      // asignada silenciosamente al tenant placeholder del SuperUsuario.
+      if (multiEmpresa && idEmpresa && !esSuper) payload.idEmpresa = idEmpresa
       crear.mutate(payload as Partial<T>, { onSuccess: cerrarModal })
     }
   }

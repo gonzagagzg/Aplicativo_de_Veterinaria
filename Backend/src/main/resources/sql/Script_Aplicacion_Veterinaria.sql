@@ -100,7 +100,7 @@ CREATE TABLE usuario (
     clave_hash VARCHAR(255) NOT NULL,
     nombres VARCHAR(100) NOT NULL,
     activo BOOLEAN DEFAULT TRUE NOT NULL,
-    CONSTRAINT uq_usuario_empresa UNIQUE (id_empresa, usuario), -- El usuario es único por empresa
+    CONSTRAINT uq_usuario_global UNIQUE (usuario), -- El usuario es único en todo el sistema
     CONSTRAINT fk_usuario_empresa FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa) ON DELETE RESTRICT,
     CONSTRAINT fk_usuario_rol FOREIGN KEY (id_rol) REFERENCES rol(id_rol) ON DELETE RESTRICT
 );

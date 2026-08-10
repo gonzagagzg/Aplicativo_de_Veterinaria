@@ -56,6 +56,50 @@ export interface Categoria {
 
 /* ------------------------------------------------------- seguridad / acceso */
 
+export interface LoginRequest {
+  usuario: string
+  clave: string
+}
+
+export interface LoginResponse {
+  token: string
+  idUsuario: Uuid
+  idEmpresa: Uuid | null
+  idRol: number
+  rol: string
+  nombres: string
+  usuario: string
+}
+
+/** Respuesta paginada genérica (ver PaginaResponse<T> en el backend). */
+export interface PaginaResponse<T> {
+  contenido: T[]
+  totalRegistros: number
+  pagina: number
+  tamanio: number
+  totalPaginas: number
+}
+
+export interface ResumenEmpresa {
+  idEmpresa: Uuid
+  ruc: string
+  razonSocial: string
+  direccion: string
+  activo: boolean
+  totalUsuarios: number
+  totalVeterinarios: number
+  totalClientes: number
+  totalMascotas: number
+  totalCitas: number
+  totalHistoriales: number
+  totalProductos: number
+  totalRecetas: number
+  totalFacturas: number
+  totalMovimientosInventario: number
+  totalFacturado: number
+  productosBajoStock: number
+}
+
 export interface Rol {
   idRol: number
   nombre: string
@@ -198,6 +242,12 @@ export interface FacturaDetalle {
   cantidad: number
   precioUnitario: number
   subtotal: number
+}
+
+/** Body de POST /api/facturas/emitir — emisión transaccional (cabecera + detalle). */
+export interface FacturaEmitirRequest {
+  idCliente: Uuid
+  detalles: Array<Pick<FacturaDetalle, 'idProducto' | 'idIva' | 'cantidad' | 'precioUnitario' | 'subtotal'>>
 }
 
 export const TIPOS_MOVIMIENTO = ['Ingreso', 'Egreso', 'Venta', 'Ajuste'] as const

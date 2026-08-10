@@ -17,15 +17,29 @@ import { PaginaUsuarios } from '@/features/admin/PaginaUsuarios'
 import { PaginaVeterinarios } from '@/features/admin/PaginaVeterinarios'
 import { PaginaAccesos } from '@/features/admin/PaginaAccesos'
 import { PaginaEmpresas } from '@/features/admin/PaginaEmpresas'
-import { useSesion } from '@/shared/session/sesion'
+import { esSuperUsuario, useSesion } from '@/shared/session/sesion'
+import { alExpirarSesion } from '@/shared/api/client'
 
 /**
- * Redirige al selector de contexto si no hay empresa/usuario elegidos.
- * NO es un guard de seguridad — ver la nota en shared/session/sesion.ts.
+ * Redirige al selector de contexto si no hay sesión JWT válida.
+ * El control real de "válido" lo hace igualmente el backend en cada
+ * petición (AuthFilter) — esto solo evita el parpadeo de pantallas
+ * protegidas antes de que la primera petición dispare el 401.
  */
 function RequiereSesion({ children }: { children: React.ReactNode }) {
-  const idEmpresa = useSesion((s) => s.idEmpresa)
-  if (!idEmpresa) return <Navigate to="/acceso" replace />
+  const token = useSesion((s) => s.token)
+  if (!token) return <Navigate to="/acceso" replace />
+  return <>{children}</>
+}
+
+/**
+ * `/api/empresas` está reservado al rol SuperUsuario en el backend
+ * (EmpresaServlet.exigirSuperUsuario). Se replica aquí para no exponer
+ * la pantalla a quien de todas formas recibiría 403 en cada petición.
+ */
+function RequiereSuperUsuario({ children }: { children: React.ReactNode }) {
+  const rol = useSesion((s) => s.rol)
+  if (!esSuperUsuario(rol)) return <Navigate to="/app" replace />
   return <>{children}</>
 }
 
@@ -54,8 +68,20 @@ export const router = createBrowserRouter([
       { path: 'usuarios', element: <PaginaUsuarios /> },
       { path: 'veterinarios', element: <PaginaVeterinarios /> },
       { path: 'accesos', element: <PaginaAccesos /> },
-      { path: 'empresas', element: <PaginaEmpresas /> },
+      {
+        path: 'empresas',
+        element: (
+          <RequiereSuperUsuario>
+            <PaginaEmpresas />
+          </RequiereSuperUsuario>
+        ),
+      },
       { path: '*', element: <Navigate to="/app" replace /> },
     ],
   },
 ])
+
+// 401 (token ausente/expirado) puede ocurrir fuera de un componente (ej. en
+// una queryFn de React Query), así que el cliente HTTP no puede usar
+// useNavigate directamente. Se registra una vez aquí, contra el router.
+alExpirarSesion(() => router.navigate('/acceso', { replace: true }))

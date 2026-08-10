@@ -6,13 +6,13 @@ import { es } from 'date-fns/locale'
 import { AlertTriangle, CalendarClock, PawPrint, TrendingUp, Users } from 'lucide-react'
 import {
   citasApi,
-  clientesApi,
   facturasApi,
   mascotasApi,
   productosApi,
   usuariosApi,
   veterinariosApi,
 } from '@/shared/api/recursos'
+import { useClientesTodos } from '@/features/clientes/api'
 import { Badge, CabeceraPagina, Cargando, Tarjeta } from '@/shared/components/ui'
 import { cn, formatearMoneda, indexarPor } from '@/shared/lib/utils'
 import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
@@ -21,7 +21,7 @@ export function PaginaPanel() {
   const { idEmpresa, nombreUsuario } = useSesion()
 
   const citas = citasApi.useLista()
-  const clientes = clientesApi.useLista()
+  const clientes = useClientesTodos()
   const mascotas = mascotasApi.useLista()
   const productos = productosApi.useLista()
   const facturas = facturasApi.useLista()
