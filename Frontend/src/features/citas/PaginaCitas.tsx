@@ -5,12 +5,12 @@ import { es } from 'date-fns/locale'
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Stethoscope } from 'lucide-react'
 import {
   citasApi,
-  clientesApi,
   historialesApi,
   mascotasApi,
   usuariosApi,
   veterinariosApi,
 } from '@/shared/api/recursos'
+import { useClientesTodos } from '@/features/clientes/api'
 import {
   Badge,
   Boton,
@@ -53,7 +53,7 @@ export function PaginaCitas() {
 
   const citas = citasApi.useLista()
   const mascotas = mascotasApi.useLista()
-  const clientes = clientesApi.useLista()
+  const clientes = useClientesTodos()
   const veterinarios = veterinariosApi.useLista()
   const usuarios = usuariosApi.useLista()
   const historiales = historialesApi.useLista()
@@ -244,7 +244,7 @@ export function PaginaCitas() {
 
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <button
-                          onClick={() => navigate(`/historiales?cita=${cita.idCita}`)}
+                          onClick={() => navigate(`/app/historiales?cita=${cita.idCita}`)}
                           className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100"
                         >
                           <Stethoscope className="h-3 w-3" />

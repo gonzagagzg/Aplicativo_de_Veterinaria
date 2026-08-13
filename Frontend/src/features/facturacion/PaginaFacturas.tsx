@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Plus, Receipt, Trash2 } from 'lucide-react'
+import { api } from '@/shared/api/client'
 import {
-  clientesApi,
   facturaDetallesApi,
   facturasApi,
   productosApi,
   sriIvaApi,
   usuariosApi,
 } from '@/shared/api/recursos'
+import { useClientesTodos } from '@/features/clientes/api'
 import { TablaDatos } from '@/shared/components/TablaDatos'
 import {
   Badge,
@@ -23,7 +25,7 @@ import {
 } from '@/shared/components/ui'
 import { formatearFechaHora, formatearMoneda, indexarPor } from '@/shared/lib/utils'
 import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
-import type { Factura, FacturaDetalle, Producto } from '@/shared/types/api'
+import type { Factura, FacturaEmitirRequest, Producto } from '@/shared/types/api'
 
 interface LineaCarrito {
   producto: Producto
@@ -33,14 +35,12 @@ interface LineaCarrito {
 /**
  * Facturación.
  *
- * El backend no expone un endpoint transaccional que reciba cabecera + detalle
- * en una sola llamada, así que la emisión se hace en dos pasos:
- *   1. POST /api/facturas          -> obtiene el idFactura generado
- *   2. POST /api/factura-detalles  -> una llamada por línea
- *
- * Consecuencia conocida: si falla una línea, la factura queda con detalle
- * incompleto (no hay rollback). Se avisa en pantalla y se registran las líneas
- * que sí entraron. La solución definitiva es un endpoint transaccional.
+ * La emisión usa el endpoint transaccional del backend
+ * (POST /api/facturas/emitir -> FacturacionTransaccionalService), que crea
+ * la cabecera y todas las líneas de detalle en una sola transacción JDBC:
+ * ya no hay riesgo de una factura con detalle incompleto por un fallo a
+ * mitad del carrito. idEmpresa/idUsuario los resuelve el backend a partir
+ * del token, no se envían desde el cliente.
  */
 export function PaginaFacturas() {
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -48,7 +48,7 @@ export function PaginaFacturas() {
   const idEmpresa = useSesion((s) => s.idEmpresa)
 
   const facturas = facturasApi.useLista()
-  const clientes = clientesApi.useLista()
+  const clientes = useClientesTodos()
   const usuarios = usuariosApi.useLista()
 
   const porCliente = useMemo(() => indexarPor(clientes.data, 'idCliente'), [clientes.data])
@@ -141,22 +141,32 @@ export function PaginaFacturas() {
 
 /* ------------------------------------------------------------------ emisión */
 
-function ModalEmision({ onCerrar }: { onCerrar: () => void }) {
-  const { idEmpresa, idUsuario } = useSesion()
+function useEmitirFactura() {
+  const qc = useQueryClient()
+  return useMutation<Factura, Error, FacturaEmitirRequest>({
+    mutationFn: (body) => api.post<Factura>('/api/facturas/emitir', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['facturas'] })
+      qc.invalidateQueries({ queryKey: ['factura-detalles'] })
+      qc.invalidateQueries({ queryKey: ['productos'] })
+      qc.invalidateQueries({ queryKey: ['movimientos-inventario'] })
+    },
+  })
+}
 
-  const clientes = clientesApi.useLista()
+function ModalEmision({ onCerrar }: { onCerrar: () => void }) {
+  const { idEmpresa } = useSesion()
+
+  const clientes = useClientesTodos()
   const productos = productosApi.useLista()
   const ivas = sriIvaApi.useLista()
 
-  const crearFactura = facturasApi.useCrear()
-  const crearDetalle = facturaDetallesApi.useCrear()
+  const emitirFactura = useEmitirFactura()
 
   const [idCliente, setIdCliente] = useState('')
   const [carrito, setCarrito] = useState<LineaCarrito[]>([])
   const [productoSel, setProductoSel] = useState('')
   const [cantidad, setCantidad] = useState('1')
-  const [emitiendo, setEmitiendo] = useState(false)
-  const [errorEmision, setErrorEmision] = useState<unknown>(null)
 
   const porIva = useMemo(() => indexarPor(ivas.data, 'idIva'), [ivas.data])
   const clientesEmpresa = filtrarPorEmpresa(clientes.data, idEmpresa)
@@ -203,52 +213,28 @@ function ModalEmision({ onCerrar }: { onCerrar: () => void }) {
     setCantidad('1')
   }
 
-  async function emitir() {
-    if (!idCliente || carrito.length === 0 || !idUsuario) return
-    setEmitiendo(true)
-    setErrorEmision(null)
+  function emitir() {
+    if (!idCliente || carrito.length === 0) return
 
-    try {
-      const factura = await crearFactura.mutateAsync({
-        idEmpresa: idEmpresa ?? undefined,
+    emitirFactura.mutate(
+      {
         idCliente,
-        idUsuario,
-        total: Number(totales.total.toFixed(2)),
-        estado: 'Emitida',
-        fecha: new Date().toISOString(),
-      } as Partial<Factura>)
-
-      for (const linea of carrito) {
-        await crearDetalle.mutateAsync({
-          idFactura: factura.idFactura,
+        detalles: carrito.map((linea) => ({
           idProducto: linea.producto.idProducto,
           idIva: linea.producto.idIva,
           cantidad: linea.cantidad,
           precioUnitario: linea.producto.precioUnitario,
           subtotal: Number((linea.producto.precioUnitario * linea.cantidad).toFixed(2)),
-        } as Partial<FacturaDetalle>)
-      }
-
-      onCerrar()
-    } catch (e) {
-      setErrorEmision(e)
-    } finally {
-      setEmitiendo(false)
-    }
+        })),
+      },
+      { onSuccess: onCerrar },
+    )
   }
 
   return (
     <Modal abierto titulo="Emitir factura" onCerrar={onCerrar} ancho="max-w-3xl">
       <div className="space-y-5">
-        {Boolean(errorEmision) && (
-          <div className="space-y-2">
-            <MensajeError error={errorEmision} />
-            <p className="text-xs text-slate-500">
-              Si la cabecera se creó pero falló una línea, revisa la factura en el listado: puede
-              haber quedado con detalle incompleto.
-            </p>
-          </div>
-        )}
+        {emitirFactura.isError && <MensajeError error={emitirFactura.error} />}
 
         <Campo etiqueta="Cliente" requerido>
           <Select value={idCliente} onChange={(e) => setIdCliente(e.target.value)}>
@@ -356,7 +342,7 @@ function ModalEmision({ onCerrar }: { onCerrar: () => void }) {
             Cancelar
           </Boton>
           <Boton
-            cargando={emitiendo}
+            cargando={emitirFactura.isPending}
             disabled={!idCliente || carrito.length === 0}
             onClick={emitir}
           >
@@ -374,7 +360,7 @@ function ModalEmision({ onCerrar }: { onCerrar: () => void }) {
 function ModalDetalle({ factura, onCerrar }: { factura: Factura; onCerrar: () => void }) {
   const detalles = facturaDetallesApi.useLista()
   const productos = productosApi.useLista()
-  const clientes = clientesApi.useLista()
+  const clientes = useClientesTodos()
   const actualizar = facturasApi.useActualizar()
 
   const porProducto = useMemo(() => indexarPor(productos.data, 'idProducto'), [productos.data])

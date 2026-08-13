@@ -53,13 +53,12 @@ export function PaginaUsuarios() {
         { nombre: 'activo', etiqueta: 'Activo', tipo: 'booleano' },
         {
           nombre: 'claveHash',
-          etiqueta: 'Hash de contraseña',
+          etiqueta: 'Contraseña',
           tipo: 'texto',
           requerido: true,
           maxLength: 255,
           anchoCompleto: true,
-          ayuda:
-            'El backend almacena el valor tal cual se envía: no lo cifra. Mientras no exista un endpoint de autenticación, este campo es un marcador de posición.',
+          ayuda: 'El backend la cifra con BCrypt antes de guardarla y nunca la devuelve.',
         },
       ]}
     />

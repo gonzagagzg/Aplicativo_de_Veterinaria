@@ -1,3 +1,5 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api } from './client'
 import { crearHooksCrud } from './crud'
 import type {
   Categoria,
@@ -16,9 +18,11 @@ import type {
   Raza,
   Receta,
   RecetaDetalle,
+  ResumenEmpresa,
   Rol,
   SriIva,
   Usuario,
+  Uuid,
   Vacuna,
   Veterinario,
 } from '@/shared/types/api'
@@ -58,3 +62,34 @@ export const movimientosApi = crearHooksCrud<MovimientoInventario>(
   'movimientos-inventario',
   'idMovimiento',
 )
+
+/**
+ * Extensiones del módulo Empresas reservadas a SuperUsuario.
+ * `empresasApi` (arriba) ya cubre GET/POST/PUT genéricos de /api/empresas;
+ * aquí solo lo que no encaja en el CRUD genérico: activar/desactivar y el
+ * resumen de uso por empresa (EmpresaServlet en el backend).
+ */
+export const empresaAdminApi = {
+  useResumen: (idEmpresa: Uuid | undefined) =>
+    useQuery<ResumenEmpresa>({
+      queryKey: ['empresas', 'resumen', idEmpresa],
+      queryFn: () => api.get<ResumenEmpresa>(`/api/empresas/${idEmpresa}/resumen`),
+      enabled: !!idEmpresa,
+    }),
+
+  useActivar: () => {
+    const qc = useQueryClient()
+    return useMutation<void, Error, Uuid>({
+      mutationFn: (idEmpresa) => api.put<void>(`/api/empresas/${idEmpresa}/activar`, undefined),
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['empresas'] }),
+    })
+  },
+
+  useDesactivar: () => {
+    const qc = useQueryClient()
+    return useMutation<void, Error, Uuid>({
+      mutationFn: (idEmpresa) => api.put<void>(`/api/empresas/${idEmpresa}/desactivar`, undefined),
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['empresas'] }),
+    })
+  },
+}

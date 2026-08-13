@@ -1,15 +1,23 @@
 import type { ApiResponse } from '@/shared/types/api'
+import { limpiarSesion, obtenerToken } from '@/shared/session/sesion'
+import { useBloqueoEmpresa } from '@/shared/session/bloqueo'
 
 /**
  * Cliente HTTP único contra la API de servlets.
  *
  * Responsabilidades:
+ *  - Adjuntar `Authorization: Bearer <token>` a toda petición cuando hay
+ *    sesión activa (el AuthFilter del backend lo exige en todo /api/* salvo
+ *    /api/auth/login).
  *  - Desempaquetar el envoltorio {exito, mensaje, datos} para que las capas
  *    superiores trabajen directamente con los datos.
  *  - Normalizar los errores del backend (que llegan como
  *    {exito:false, mensaje:"..."} con status 400/404/409/500) en una
  *    excepción `ApiError` con mensaje legible.
  *  - Tratar el 204 de DELETE como respuesta vacía válida.
+ *  - Reaccionar globalmente a 401 (token ausente/expirado: limpiar sesión y
+ *    forzar vuelta a /acceso) y 403 (veterinaria desactivada u operación sin
+ *    permiso: se deja el mensaje del backend para que la pantalla lo muestre).
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? ''
@@ -31,6 +39,23 @@ export class ApiError extends Error {
   get esNoEncontrado() {
     return this.status === 404
   }
+
+  get esNoAutenticado() {
+    return this.status === 401
+  }
+
+  /** 403: puede ser falta de permiso o veterinaria (empresa) desactivada. */
+  get esProhibido() {
+    return this.status === 403
+  }
+}
+
+type ManejadorSesionExpirada = () => void
+let manejadorSesionExpirada: ManejadorSesionExpirada | null = null
+
+/** Registrado una vez desde el router para poder navegar a /acceso en un 401. */
+export function alExpirarSesion(manejador: ManejadorSesionExpirada) {
+  manejadorSesionExpirada = manejador
 }
 
 type QueryParams = Record<string, string | number | boolean | null | undefined>
@@ -56,10 +81,15 @@ async function solicitar<T>(
 ): Promise<T> {
   let respuesta: Response
 
+  const token = obtenerToken()
+  const headers: Record<string, string> = {}
+  if (opciones.body !== undefined) headers['Content-Type'] = 'application/json'
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
   try {
     respuesta = await fetch(construirUrl(path, opciones.params), {
       method,
-      headers: opciones.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: opciones.body !== undefined ? JSON.stringify(opciones.body) : undefined,
     })
   } catch {
@@ -81,7 +111,25 @@ async function solicitar<T>(
   }
 
   if (!respuesta.ok || (cuerpo && cuerpo.exito === false)) {
-    throw new ApiError(respuesta.status, cuerpo?.mensaje ?? `Error ${respuesta.status}`)
+    const error = new ApiError(respuesta.status, cuerpo?.mensaje ?? `Error ${respuesta.status}`)
+
+    // Sesión ausente/expirada: no tiene sentido seguir en la app, se limpia y
+    // se manda al login. No se dispara si la petición era el propio login
+    // (ahí un 401 es "credenciales inválidas", lo maneja la pantalla).
+    if (error.esNoAutenticado && path !== '/api/auth/login') {
+      limpiarSesion()
+      manejadorSesionExpirada?.()
+    }
+
+    // 403 con la veterinaria desactivada: NO se cierra la sesión (el usuario
+    // sigue siendo válido), se bloquea toda la app con un aviso hasta que
+    // pague/reactiven la cuenta. Se distingue de un 403 "sin permiso" por el
+    // mensaje que arma AuthFilter para ese caso puntual.
+    if (error.esProhibido && /desactivad/i.test(error.message)) {
+      useBloqueoEmpresa.getState().bloquear(error.message)
+    }
+
+    throw error
   }
 
   return (cuerpo?.datos ?? (undefined as T)) as T

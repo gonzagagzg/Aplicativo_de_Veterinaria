@@ -83,7 +83,7 @@ export function PaginaRecetas() {
             <div className="text-right">
               <button
                 disabled={!cita}
-                onClick={() => cita && navigate(`/historiales?cita=${cita.idCita}`)}
+                onClick={() => cita && navigate(`/app/historiales?cita=${cita.idCita}`)}
                 className="rounded-lg px-2.5 py-1 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-40"
               >
                 Ver consulta

@@ -3,25 +3,25 @@ import { Link } from 'react-router-dom'
 import { endOfMonth, isSameDay, isWithinInterval, parseISO, startOfMonth } from 'date-fns'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { AlertTriangle, CalendarClock, DollarSign, Dog, Users } from 'lucide-react'
+import { AlertTriangle, CalendarClock, PawPrint, TrendingUp, Users } from 'lucide-react'
 import {
   citasApi,
-  clientesApi,
   facturasApi,
   mascotasApi,
   productosApi,
   usuariosApi,
   veterinariosApi,
 } from '@/shared/api/recursos'
+import { useClientesTodos } from '@/features/clientes/api'
 import { Badge, CabeceraPagina, Cargando, Tarjeta } from '@/shared/components/ui'
-import { formatearMoneda, indexarPor } from '@/shared/lib/utils'
+import { cn, formatearMoneda, indexarPor } from '@/shared/lib/utils'
 import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
 
 export function PaginaPanel() {
   const { idEmpresa, nombreUsuario } = useSesion()
 
   const citas = citasApi.useLista()
-  const clientes = clientesApi.useLista()
+  const clientes = useClientesTodos()
   const mascotas = mascotasApi.useLista()
   const productos = productosApi.useLista()
   const facturas = facturasApi.useLista()
@@ -89,28 +89,40 @@ export function PaginaPanel() {
           etiqueta="Citas hoy"
           valor={String(metricas.citasHoy.length)}
           detalle={`${metricas.pendientesHoy} pendientes`}
-          a="/citas"
+          a="/app/citas"
+          acento="border-l-brand-500"
+          iconoBg="bg-brand-50"
+          iconoColor="text-brand-600"
         />
         <Metrica
           Icono={Users}
           etiqueta="Clientes"
           valor={String(metricas.clientes)}
           detalle="registrados"
-          a="/clientes"
+          a="/app/clientes"
+          acento="border-l-emerald-500"
+          iconoBg="bg-emerald-50"
+          iconoColor="text-emerald-600"
         />
         <Metrica
-          Icono={Dog}
-          etiqueta="Mascotas"
+          Icono={PawPrint}
+          etiqueta="Pacientes"
           valor={String(metricas.mascotas)}
           detalle="en seguimiento"
-          a="/mascotas"
+          a="/app/mascotas"
+          acento="border-l-violet-500"
+          iconoBg="bg-violet-50"
+          iconoColor="text-violet-600"
         />
         <Metrica
-          Icono={DollarSign}
-          etiqueta="Ventas del mes"
+          Icono={TrendingUp}
+          etiqueta="Facturación del mes"
           valor={formatearMoneda(metricas.ventasMes)}
           detalle="facturas no anuladas"
-          a="/facturas"
+          a="/app/facturas"
+          acento="border-l-gold-500"
+          iconoBg="bg-gold-50"
+          iconoColor="text-gold-600"
         />
       </div>
 
@@ -119,7 +131,7 @@ export function PaginaPanel() {
           <Tarjeta
             titulo="Agenda de hoy"
             acciones={
-              <Link to="/citas" className="text-sm font-medium text-brand-700 hover:underline">
+              <Link to="/app/citas" className="text-sm font-medium text-brand-700 hover:underline">
                 Ver semana
               </Link>
             }
@@ -188,7 +200,7 @@ export function PaginaPanel() {
               ))}
               {metricas.alertasStock.length > 6 && (
                 <li>
-                  <Link to="/inventario" className="text-sm text-brand-700 hover:underline">
+                  <Link to="/app/inventario" className="text-sm text-brand-700 hover:underline">
                     Ver los {metricas.alertasStock.length} productos
                   </Link>
                 </li>
@@ -207,24 +219,33 @@ function Metrica({
   valor,
   detalle,
   a,
+  acento,
+  iconoBg,
+  iconoColor,
 }: {
   Icono: React.ComponentType<{ className?: string }>
   etiqueta: string
   valor: string
   detalle: string
   a: string
+  acento: string
+  iconoBg: string
+  iconoColor: string
 }) {
   return (
     <Link
       to={a}
-      className="rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-brand-300"
+      className={cn(
+        'group relative overflow-hidden rounded-xl border border-slate-200 border-l-4 bg-white p-5 shadow-sm transition hover:shadow-md',
+        acento,
+      )}
     >
-      <div className="flex items-center gap-2 text-slate-500">
-        <Icono className="h-4 w-4" />
-        <span className="text-sm">{etiqueta}</span>
+      <div className={cn('mb-4 flex h-10 w-10 items-center justify-center rounded-lg', iconoBg)}>
+        <Icono className={cn('h-5 w-5', iconoColor)} />
       </div>
-      <p className="mt-2 text-2xl font-semibold text-slate-900">{valor}</p>
-      <p className="text-xs text-slate-500">{detalle}</p>
+      <p className="text-2xl font-bold tracking-tight text-slate-900">{valor}</p>
+      <p className="mt-0.5 text-sm font-medium text-slate-700">{etiqueta}</p>
+      <p className="mt-0.5 text-xs text-slate-400">{detalle}</p>
     </Link>
   )
 }

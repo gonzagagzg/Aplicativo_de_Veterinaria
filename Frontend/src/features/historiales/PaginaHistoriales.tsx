@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { ClipboardList, Plus, Trash2 } from 'lucide-react'
 import {
   citasApi,
-  clientesApi,
   historialesApi,
   mascotasApi,
   productosApi,
   recetaDetallesApi,
   recetasApi,
 } from '@/shared/api/recursos'
+import { useClientesTodos } from '@/features/clientes/api'
 import { TablaDatos } from '@/shared/components/TablaDatos'
 import {
   Badge,
@@ -46,7 +46,7 @@ export function PaginaHistoriales() {
   const historiales = historialesApi.useLista()
   const citas = citasApi.useLista()
   const mascotas = mascotasApi.useLista()
-  const clientes = clientesApi.useLista()
+  const clientes = useClientesTodos()
 
   const porCita = useMemo(() => indexarPor(citas.data, 'idCita'), [citas.data])
   const porMascota = useMemo(() => indexarPor(mascotas.data, 'idMascota'), [mascotas.data])
@@ -165,23 +165,37 @@ function ModalConsulta({ idCita, onCerrar }: { idCita: string; onCerrar: () => v
     diagnostico: historial?.diagnostico ?? '',
   })
 
+  // Sincroniza el formulario cuando los datos cargan después del primer render
+  useEffect(() => {
+    if (historial) {
+      setForm({
+        pesoKg: historial.pesoKg?.toString() ?? '',
+        temperaturaC: historial.temperaturaC?.toString() ?? '',
+        anamnesis: historial.anamnesis ?? '',
+        diagnostico: historial.diagnostico ?? '',
+      })
+    }
+  // Solo re-sincroniza cuando cambia el historial (no en cada edición del form)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historial?.idHistorial])
+
   function guardar() {
     const payload = {
       idEmpresa: idEmpresa ?? undefined,
       idCita,
-      pesoKg: form.pesoKg ? Number.parseFloat(form.pesoKg) : null,
-      temperaturaC: form.temperaturaC ? Number.parseFloat(form.temperaturaC) : null,
+      pesoKg: form.pesoKg !== '' ? Number.parseFloat(form.pesoKg) : null,
+      temperaturaC: form.temperaturaC !== '' ? Number.parseFloat(form.temperaturaC) : null,
       anamnesis: form.anamnesis || null,
       diagnostico: form.diagnostico || null,
     }
 
     if (historial) {
-      actualizarHistorial.mutate({
-        id: historial.idHistorial,
-        datos: { ...historial, ...payload },
-      })
+      actualizarHistorial.mutate(
+        { id: historial.idHistorial, datos: { ...historial, ...payload } },
+        { onSuccess: onCerrar },
+      )
     } else {
-      crearHistorial.mutate(payload as Partial<HistorialClinico>)
+      crearHistorial.mutate(payload as Partial<HistorialClinico>, { onSuccess: onCerrar })
     }
   }
 
