@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { HeartPulse, LockKeyhole } from 'lucide-react'
 import { useLogin } from '@/shared/api/auth'
 import { ApiError } from '@/shared/api/client'
@@ -57,12 +57,12 @@ export function PaginaAcceso() {
     <div className="flex min-h-screen">
       {/* Panel izquierdo: identidad clínica */}
       <div className="hidden flex-col justify-between bg-brand-950 p-12 lg:flex lg:w-5/12">
-        <div className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold-500 text-brand-950">
             <HeartPulse className="h-6 w-6" />
           </div>
           <span className="text-base font-semibold text-white">Veterinaria ITQ</span>
-        </div>
+        </Link>
 
         <div>
           <p className="text-4xl font-bold leading-snug text-white">
@@ -83,12 +83,12 @@ export function PaginaAcceso() {
       <div className="flex flex-1 flex-col items-center justify-center bg-brand-50 p-8">
         <div className="w-full max-w-sm">
           {/* Logo móvil */}
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
+          <Link to="/" className="mb-8 flex items-center gap-3 lg:hidden">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
               <HeartPulse className="h-5 w-5" />
             </div>
             <span className="text-sm font-semibold text-slate-900">Veterinaria ITQ</span>
-          </div>
+          </Link>
 
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Iniciar sesión</h2>
           <p className="mt-1 text-sm text-slate-500">Ingrese sus credenciales de acceso.</p>
