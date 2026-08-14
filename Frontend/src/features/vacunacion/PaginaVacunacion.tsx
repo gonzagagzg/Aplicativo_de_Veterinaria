@@ -4,12 +4,9 @@ import { PaginaCrud } from '@/shared/components/crud/PaginaCrud'
 import { formatearFecha, indexarPor } from '@/shared/lib/utils'
 import { mascotaVacunasApi, mascotasApi, vacunasApi } from '@/shared/api/recursos'
 import { useClientesTodos } from '@/features/clientes/api'
-import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
 import type { MascotaVacuna } from '@/shared/types/api'
 
 export function PaginaVacunacion() {
-  const idEmpresa = useSesion((s) => s.idEmpresa)
-
   const mascotas = mascotasApi.useLista()
   const clientes = useClientesTodos()
   const vacunas = vacunasApi.useLista()
@@ -47,7 +44,9 @@ export function PaginaVacunacion() {
     [porMascota, porCliente, porVacuna],
   )
 
-  const mascotasEmpresa = filtrarPorEmpresa(mascotas.data, idEmpresa)
+  // El backend ya filtra por empresa activa a partir del token (ver
+  // MascotaServlet), así que no hace falta re-filtrar aquí.
+  const mascotasEmpresa = mascotas.data ?? []
 
   return (
     <PaginaCrud<MascotaVacuna>

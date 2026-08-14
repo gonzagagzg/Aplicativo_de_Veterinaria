@@ -4,12 +4,9 @@ import { PaginaCrud } from '@/shared/components/crud/PaginaCrud'
 import { Badge } from '@/shared/components/ui'
 import { formatearFecha, formatearMoneda, indexarPor } from '@/shared/lib/utils'
 import { categoriasApi, productosApi, sriIvaApi } from '@/shared/api/recursos'
-import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
 import type { Producto } from '@/shared/types/api'
 
 export function PaginaProductos() {
-  const idEmpresa = useSesion((s) => s.idEmpresa)
-
   const categorias = categoriasApi.useLista()
   const ivas = sriIvaApi.useLista()
 
@@ -62,7 +59,9 @@ export function PaginaProductos() {
     [porCategoria, porIva],
   )
 
-  const categoriasEmpresa = filtrarPorEmpresa(categorias.data, idEmpresa)
+  // El backend ya filtra por empresa activa a partir del token (ver
+  // CategoriaServlet), así que no hace falta re-filtrar aquí.
+  const categoriasEmpresa = categorias.data ?? []
 
   return (
     <PaginaCrud<Producto>

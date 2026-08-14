@@ -4,12 +4,9 @@ import { PaginaCrud } from '@/shared/components/crud/PaginaCrud'
 import { calcularEdad, formatearFecha, indexarPor } from '@/shared/lib/utils'
 import { especiesApi, mascotasApi, razasApi } from '@/shared/api/recursos'
 import { useClientesTodos } from '@/features/clientes/api'
-import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
 import type { Mascota } from '@/shared/types/api'
 
 export function PaginaMascotas() {
-  const idEmpresa = useSesion((s) => s.idEmpresa)
-
   const clientes = useClientesTodos()
   const razas = razasApi.useLista()
   const especies = especiesApi.useLista()
@@ -53,9 +50,9 @@ export function PaginaMascotas() {
     [porCliente, porRaza, porEspecie],
   )
 
-  // Solo se ofrecen clientes de la empresa activa: crear una mascota apuntando
-  // a un cliente de otra empresa sería un dato inconsistente.
-  const clientesEmpresa = filtrarPorEmpresa(clientes.data, idEmpresa)
+  // El backend ya filtra por empresa activa a partir del token (ver
+  // ClienteServlet), así que no hace falta re-filtrar aquí.
+  const clientesEmpresa = clientes.data ?? []
 
   return (
     <PaginaCrud<Mascota>

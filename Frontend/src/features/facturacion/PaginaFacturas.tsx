@@ -24,7 +24,6 @@ import {
   Select,
 } from '@/shared/components/ui'
 import { formatearFechaHora, formatearMoneda, indexarPor } from '@/shared/lib/utils'
-import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
 import type { Factura, FacturaEmitirRequest, Producto } from '@/shared/types/api'
 
 interface LineaCarrito {
@@ -45,7 +44,6 @@ interface LineaCarrito {
 export function PaginaFacturas() {
   const [modalAbierto, setModalAbierto] = useState(false)
   const [facturaVista, setFacturaVista] = useState<Factura | null>(null)
-  const idEmpresa = useSesion((s) => s.idEmpresa)
 
   const facturas = facturasApi.useLista()
   const clientes = useClientesTodos()
@@ -54,10 +52,11 @@ export function PaginaFacturas() {
   const porCliente = useMemo(() => indexarPor(clientes.data, 'idCliente'), [clientes.data])
   const porUsuario = useMemo(() => indexarPor(usuarios.data, 'idUsuario'), [usuarios.data])
 
+  // El backend ya filtra por empresa activa a partir del token (ver
+  // FacturaServlet), así que no hace falta re-filtrar aquí.
   const datos = useMemo(
-    () =>
-      filtrarPorEmpresa(facturas.data, idEmpresa).sort((a, b) => b.fecha.localeCompare(a.fecha)),
-    [facturas.data, idEmpresa],
+    () => [...(facturas.data ?? [])].sort((a, b) => b.fecha.localeCompare(a.fecha)),
+    [facturas.data],
   )
 
   const columnas = useMemo<ColumnDef<Factura, unknown>[]>(
@@ -155,8 +154,6 @@ function useEmitirFactura() {
 }
 
 function ModalEmision({ onCerrar }: { onCerrar: () => void }) {
-  const { idEmpresa } = useSesion()
-
   const clientes = useClientesTodos()
   const productos = productosApi.useLista()
   const ivas = sriIvaApi.useLista()
@@ -169,8 +166,10 @@ function ModalEmision({ onCerrar }: { onCerrar: () => void }) {
   const [cantidad, setCantidad] = useState('1')
 
   const porIva = useMemo(() => indexarPor(ivas.data, 'idIva'), [ivas.data])
-  const clientesEmpresa = filtrarPorEmpresa(clientes.data, idEmpresa)
-  const productosEmpresa = filtrarPorEmpresa(productos.data, idEmpresa)
+  // El backend ya filtra por empresa activa a partir del token (ver
+  // ClienteServlet / ProductoServlet), así que no hace falta re-filtrar aquí.
+  const clientesEmpresa = clientes.data ?? []
+  const productosEmpresa = productos.data ?? []
 
   /** El subtotal por línea excluye IVA; el impuesto se calcula por tarifa. */
   const totales = useMemo(() => {
