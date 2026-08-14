@@ -27,6 +27,12 @@ public final class ConexionBD {
 
     private static final HikariDataSource DATA_SOURCE;
 
+    // =========================================================
+    // POOL ÚNICO DE CONEXIONES
+    // =========================================================
+
+    private static final HikariDataSource DATA_SOURCE;
+
     static {
 
         try {
