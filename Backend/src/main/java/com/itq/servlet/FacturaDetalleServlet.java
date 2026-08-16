@@ -1,64 +1,203 @@
 package com.itq.servlet;
 
 import com.itq.dto.ApiResponse;
-import com.itq.model.FacturaDetalle;
+import com.itq.security.Autorizacion;
 import com.itq.service.FacturaDetalleService;
 import com.itq.util.HttpUtil;
-import com.itq.util.JsonUtil;
 import com.itq.util.SqlErrorUtil;
+
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.UUID;
 
 @WebServlet("/api/factura-detalles/*")
 public class FacturaDetalleServlet extends HttpServlet {
-    private final FacturaDetalleService service = new FacturaDetalleService();
 
-    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private final FacturaDetalleService service =
+            new FacturaDetalleService();
+
+    // =========================================================
+    // CONSULTAR DETALLES
+    // =========================================================
+
+    @Override
+    protected void doGet(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws IOException {
+
         try {
-            String raw = valorId(req);
-            if (raw == null) { HttpUtil.json(resp, 200, ApiResponse.ok("Listado", service.listar())); return; }
-            UUID id = UUID.fromString(raw);
-            var encontrado = service.buscarPorId(id);
-            if (encontrado.isEmpty()) { HttpUtil.error(resp, 404, "Registro no encontrado"); return; }
-            HttpUtil.json(resp, 200, ApiResponse.ok("Registro encontrado", encontrado.get()));
-        } catch (IllegalArgumentException e) { HttpUtil.error(resp, 400, "Identificador inválido"); }
-          catch (SQLException e) { HttpUtil.error(resp, SqlErrorUtil.estadoHttp(e), e.getMessage()); }
+
+            /*
+             * Los detalles de factura pueden consultarse
+             * únicamente si el usuario tiene permiso
+             * para visualizar facturas.
+             */
+            Autorizacion.exigir(
+                    req,
+                    "FACTURAS",
+                    "VER"
+            );
+
+            String raw =
+                    valorId(req);
+
+            // GET /api/factura-detalles
+            if (raw == null) {
+
+                HttpUtil.json(
+                        resp,
+                        200,
+                        ApiResponse.ok(
+                                "Listado",
+                                service.listar()
+                        )
+                );
+
+                return;
+            }
+
+            // GET /api/factura-detalles/{id}
+            UUID id =
+                    UUID.fromString(raw);
+
+            var encontrado =
+                    service.buscarPorId(id);
+
+            if (encontrado.isEmpty()) {
+
+                HttpUtil.error(
+                        resp,
+                        404,
+                        "Registro no encontrado"
+                );
+
+                return;
+            }
+
+            HttpUtil.json(
+                    resp,
+                    200,
+                    ApiResponse.ok(
+                            "Registro encontrado",
+                            encontrado.get()
+                    )
+            );
+
+        } catch (SecurityException e) {
+
+            HttpUtil.error(
+                    resp,
+                    403,
+                    e.getMessage()
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            HttpUtil.error(
+                    resp,
+                    400,
+                    "Identificador inválido"
+            );
+
+        } catch (SQLException e) {
+
+            HttpUtil.error(
+                    resp,
+                    SqlErrorUtil.estadoHttp(e),
+                    e.getMessage()
+            );
+
+        } catch (IllegalStateException e) {
+
+            HttpUtil.error(
+                    resp,
+                    500,
+                    e.getMessage()
+            );
+        }
     }
 
-    @Override protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        try {
-            FacturaDetalle obj = JsonUtil.gson().fromJson(req.getReader(), FacturaDetalle.class);
-            HttpUtil.json(resp, 201, ApiResponse.ok("Registro creado", service.crear(obj)));
-        } catch (SQLException e) { HttpUtil.error(resp, SqlErrorUtil.estadoHttp(e), e.getMessage()); }
-          catch (Exception e) { HttpUtil.error(resp, 400, "JSON o datos inválidos: " + e.getMessage()); }
+    // =========================================================
+    // CREAR DETALLE DIRECTAMENTE - BLOQUEADO
+    // =========================================================
+
+    @Override
+    protected void doPost(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws IOException {
+
+        HttpUtil.error(
+                resp,
+                405,
+                "Los detalles de factura únicamente pueden generarse mediante la emisión transaccional de la factura"
+        );
     }
 
-    @Override protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        try {
-            UUID id = UUID.fromString(valorId(req));
-            FacturaDetalle obj = JsonUtil.gson().fromJson(req.getReader(), FacturaDetalle.class);
-            obj.setIdDetalle(id);
-            if (!service.actualizar(obj)) { HttpUtil.error(resp, 404, "Registro no encontrado"); return; }
-            HttpUtil.json(resp, 200, ApiResponse.ok("Registro actualizado", obj));
-        } catch (SQLException e) { HttpUtil.error(resp, SqlErrorUtil.estadoHttp(e), e.getMessage()); }
-          catch (Exception e) { HttpUtil.error(resp, 400, "Datos inválidos: " + e.getMessage()); }
+    // =========================================================
+    // MODIFICAR DETALLE DIRECTAMENTE - BLOQUEADO
+    // =========================================================
+
+    @Override
+    protected void doPut(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws IOException {
+
+        HttpUtil.error(
+                resp,
+                405,
+                "Los detalles de una factura emitida no pueden modificarse directamente"
+        );
     }
 
-    @Override protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        try {
-            UUID id = UUID.fromString(valorId(req));
-            if (!service.eliminar(id)) { HttpUtil.error(resp, 404, "Registro no encontrado"); return; }
-            resp.setStatus(204);
-        } catch (SQLException e) { HttpUtil.error(resp, SqlErrorUtil.estadoHttp(e), e.getMessage()); }
-          catch (Exception e) { HttpUtil.error(resp, 400, "Identificador inválido"); }
+    // =========================================================
+    // ELIMINAR DETALLE DIRECTAMENTE - BLOQUEADO
+    // =========================================================
+
+    @Override
+    protected void doDelete(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws IOException {
+
+        HttpUtil.error(
+                resp,
+                405,
+                "Los detalles de una factura emitida no pueden eliminarse directamente"
+        );
     }
 
-    private String valorId(HttpServletRequest req) {
-        String path = req.getPathInfo();
-        if (path == null || path.equals("/") || path.isBlank()) return null;
-        return path.substring(1).split("/")[0];
+    // =========================================================
+    // OBTENER ID DESDE URL
+    // =========================================================
+
+    private String valorId(
+            HttpServletRequest req
+    ) {
+
+        String path =
+                req.getPathInfo();
+
+        if (path == null ||
+                path.equals("/") ||
+                path.isBlank()) {
+
+            return null;
+        }
+
+        String valor =
+                path.substring(1)
+                        .split("/")[0];
+
+        return valor.isBlank()
+                ? null
+                : valor;
     }
 }
