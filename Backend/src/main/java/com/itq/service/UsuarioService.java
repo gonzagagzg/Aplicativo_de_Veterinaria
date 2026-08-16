@@ -7,11 +7,24 @@ import com.itq.util.PasswordUtil;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public class UsuarioService {
 
     private final UsuarioDAO dao = new UsuarioDAO();
+
+    /*
+     * Roles que un usuario local puede asignar
+     * a empleados de su propia veterinaria.
+     *
+     * 3 = Veterinario
+     * 4 = Recepcionista
+     * 5 = Asistente Clínico
+     * 7 = Farmacéutico
+     */
+    private static final Set<Integer> ROLES_EMPLEADOS =
+            Set.of(3, 4, 5, 7);
 
     public List<Usuario> listar(
             UUID idEmpresa,
@@ -32,6 +45,12 @@ public class UsuarioService {
             UUID idEmpresa,
             boolean superUsuario
     ) throws SQLException {
+
+        if (idUsuario == null) {
+            throw new IllegalArgumentException(
+                    "El usuario es obligatorio"
+            );
+        }
 
         if (superUsuario) {
             return dao.buscarPorId(idUsuario);
@@ -58,12 +77,23 @@ public class UsuarioService {
         }
 
         /*
-         * Un usuario normal NO decide a qué empresa
-         * pertenece el nuevo empleado.
+         * Un usuario normal no puede decidir
+         * a qué empresa pertenece el empleado.
+         *
+         * Siempre se utiliza la empresa obtenida
+         * desde la sesión/JWT.
          */
         if (!superUsuario) {
+
             validarEmpresaSesion(idEmpresa);
+
             obj.setIdEmpresa(idEmpresa);
+
+            /*
+             * Un usuario local solamente puede
+             * asignar roles de empleados.
+             */
+            validarRolEmpleado(obj.getIdRol());
         }
 
         validarBase(obj);
@@ -77,7 +107,9 @@ public class UsuarioService {
         /*
          * Lo recibido como claveHash desde el JSON
          * se considera contraseña nueva en texto plano.
-         * Antes de guardar SIEMPRE se convierte a BCrypt.
+         *
+         * Antes de guardar siempre se convierte
+         * a BCrypt.
          */
         obj.setClaveHash(
                 PasswordUtil.hash(
@@ -101,24 +133,29 @@ public class UsuarioService {
             boolean superUsuario
     ) throws SQLException {
 
-        if (obj == null || obj.getIdUsuario() == null) {
+        if (obj == null ||
+                obj.getIdUsuario() == null) {
+
             throw new IllegalArgumentException(
                     "Los datos del usuario son obligatorios"
             );
         }
 
         Optional<Usuario> existenteOpt =
-                dao.buscarPorIdConHash(obj.getIdUsuario());
+                dao.buscarPorIdConHash(
+                        obj.getIdUsuario()
+                );
 
         if (existenteOpt.isEmpty()) {
             return false;
         }
 
-        Usuario existente = existenteOpt.get();
+        Usuario existente =
+                existenteOpt.get();
 
         /*
          * Un usuario normal no puede modificar
-         * usuarios de otra empresa.
+         * usuarios pertenecientes a otra empresa.
          */
         if (!superUsuario) {
 
@@ -130,17 +167,28 @@ public class UsuarioService {
                 return false;
             }
 
+            /*
+             * La empresa siempre se toma
+             * desde la sesión/JWT.
+             */
             obj.setIdEmpresa(idEmpresa);
+
+            /*
+             * Tampoco puede convertir un empleado
+             * en Administrador Global,
+             * Administrador Local o SuperUsuario.
+             */
+            validarRolEmpleado(obj.getIdRol());
         }
 
         validarBase(obj);
 
         /*
-         * Si el PUT no trae contraseña nueva,
+         * Si el PUT no trae una contraseña nueva,
          * conservamos el hash existente.
          *
-         * Si trae una contraseña,
-         * generamos un BCrypt nuevo.
+         * Si trae una contraseña nueva,
+         * generamos un nuevo BCrypt.
          */
         if (vacio(obj.getClaveHash())) {
 
@@ -173,11 +221,40 @@ public class UsuarioService {
             boolean superUsuario
     ) throws SQLException {
 
+        if (idUsuario == null) {
+            throw new IllegalArgumentException(
+                    "El usuario es obligatorio"
+            );
+        }
+
         if (superUsuario) {
             return dao.eliminar(idUsuario);
         }
 
         validarEmpresaSesion(idEmpresa);
+
+        /*
+         * Primero comprobamos que el usuario
+         * realmente pertenece a la veterinaria
+         * de la sesión.
+         */
+        Optional<Usuario> existente =
+                dao.buscarPorIdYEmpresa(
+                        idUsuario,
+                        idEmpresa
+                );
+
+        if (existente.isEmpty()) {
+            return false;
+        }
+
+        /*
+         * Un usuario local tampoco puede eliminar
+         * una cuenta administrativa reservada.
+         */
+        validarRolEmpleado(
+                existente.get().getIdRol()
+        );
 
         return dao.eliminarPorEmpresa(
                 idUsuario,
@@ -185,7 +262,9 @@ public class UsuarioService {
         );
     }
 
-    private void validarBase(Usuario obj) {
+    private void validarBase(
+            Usuario obj
+    ) {
 
         if (obj.getIdEmpresa() == null) {
             throw new IllegalArgumentException(
@@ -228,7 +307,32 @@ public class UsuarioService {
         );
     }
 
-    private void validarEmpresaSesion(UUID idEmpresa) {
+    /*
+     * Impide que un usuario local pueda
+     * escalar privilegios asignando roles
+     * administrativos reservados.
+     */
+    private void validarRolEmpleado(
+            Integer idRol
+    ) {
+
+        if (idRol == null) {
+            throw new IllegalArgumentException(
+                    "El rol es obligatorio"
+            );
+        }
+
+        if (!ROLES_EMPLEADOS.contains(idRol)) {
+
+            throw new SecurityException(
+                    "No tiene autorización para asignar este rol"
+            );
+        }
+    }
+
+    private void validarEmpresaSesion(
+            UUID idEmpresa
+    ) {
 
         if (idEmpresa == null) {
             throw new SecurityException(
@@ -237,7 +341,9 @@ public class UsuarioService {
         }
     }
 
-    private boolean vacio(String valor) {
+    private boolean vacio(
+            String valor
+    ) {
 
         return valor == null ||
                 valor.trim().isEmpty();

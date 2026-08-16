@@ -13,7 +13,6 @@ public class ClienteDAO {
 
     // =========================================================
     // SUPERUSUARIO - LISTADO COMPLETO
-    // Se mantiene por compatibilidad
     // =========================================================
 
     public List<Cliente> listar()
@@ -22,8 +21,12 @@ public class ClienteDAO {
         String sql = """
                 SELECT id_cliente,
                        id_empresa,
+                       tipo_documento,
                        identificacion,
-                       nombres
+                       nombres,
+                       direccion,
+                       correo,
+                       telefono
                 FROM cliente
                 ORDER BY id_cliente
                 """;
@@ -62,8 +65,12 @@ public class ClienteDAO {
         String sql = """
                 SELECT id_cliente,
                        id_empresa,
+                       tipo_documento,
                        identificacion,
-                       nombres
+                       nombres,
+                       direccion,
+                       correo,
+                       telefono
                 FROM cliente
                 ORDER BY id_cliente
                 LIMIT ?
@@ -84,8 +91,10 @@ public class ClienteDAO {
             ps.setInt(1, limite);
             ps.setInt(2, offset);
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 while (rs.next()) {
                     lista.add(mapear(rs));
@@ -97,7 +106,7 @@ public class ClienteDAO {
     }
 
     // =========================================================
-    // SUPERUSUARIO - TOTAL REGISTROS
+    // TOTAL REGISTROS
     // =========================================================
 
     public long contar()
@@ -121,7 +130,9 @@ public class ClienteDAO {
 
             rs.next();
 
-            return rs.getLong("total");
+            return rs.getLong(
+                    "total"
+            );
         }
     }
 
@@ -136,8 +147,12 @@ public class ClienteDAO {
         String sql = """
                 SELECT id_cliente,
                        id_empresa,
+                       tipo_documento,
                        identificacion,
-                       nombres
+                       nombres,
+                       direccion,
+                       correo,
+                       telefono
                 FROM cliente
                 WHERE id_cliente = ?
                 """;
@@ -155,8 +170,10 @@ public class ClienteDAO {
                     idCliente
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 return rs.next()
                         ? Optional.of(mapear(rs))
@@ -166,8 +183,7 @@ public class ClienteDAO {
     }
 
     // =========================================================
-    // USUARIO DE VETERINARIA - LISTADO COMPLETO
-    // Se mantiene por compatibilidad
+    // EMPRESA - LISTADO COMPLETO
     // =========================================================
 
     public List<Cliente> listarPorEmpresa(
@@ -177,8 +193,12 @@ public class ClienteDAO {
         String sql = """
                 SELECT id_cliente,
                        id_empresa,
+                       tipo_documento,
                        identificacion,
-                       nombres
+                       nombres,
+                       direccion,
+                       correo,
+                       telefono
                 FROM cliente
                 WHERE id_empresa = ?
                 ORDER BY id_cliente
@@ -200,8 +220,10 @@ public class ClienteDAO {
                     idEmpresa
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 while (rs.next()) {
                     lista.add(mapear(rs));
@@ -213,7 +235,7 @@ public class ClienteDAO {
     }
 
     // =========================================================
-    // USUARIO DE VETERINARIA - LISTADO PAGINADO
+    // EMPRESA - LISTADO PAGINADO
     // =========================================================
 
     public List<Cliente> listarPorEmpresaPaginado(
@@ -225,8 +247,12 @@ public class ClienteDAO {
         String sql = """
                 SELECT id_cliente,
                        id_empresa,
+                       tipo_documento,
                        identificacion,
-                       nombres
+                       nombres,
+                       direccion,
+                       correo,
+                       telefono
                 FROM cliente
                 WHERE id_empresa = ?
                 ORDER BY id_cliente
@@ -260,8 +286,10 @@ public class ClienteDAO {
                     offset
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 while (rs.next()) {
                     lista.add(mapear(rs));
@@ -273,7 +301,7 @@ public class ClienteDAO {
     }
 
     // =========================================================
-    // USUARIO DE VETERINARIA - TOTAL REGISTROS
+    // EMPRESA - TOTAL REGISTROS
     // =========================================================
 
     public long contarPorEmpresa(
@@ -299,8 +327,10 @@ public class ClienteDAO {
                     idEmpresa
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 rs.next();
 
@@ -312,7 +342,7 @@ public class ClienteDAO {
     }
 
     // =========================================================
-    // USUARIO DE VETERINARIA - BUSCAR POR ID
+    // EMPRESA - BUSCAR POR ID
     // =========================================================
 
     public Optional<Cliente> buscarPorIdYEmpresa(
@@ -323,8 +353,12 @@ public class ClienteDAO {
         String sql = """
                 SELECT id_cliente,
                        id_empresa,
+                       tipo_documento,
                        identificacion,
-                       nombres
+                       nombres,
+                       direccion,
+                       correo,
+                       telefono
                 FROM cliente
                 WHERE id_cliente = ?
                   AND id_empresa = ?
@@ -348,8 +382,10 @@ public class ClienteDAO {
                     idEmpresa
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 return rs.next()
                         ? Optional.of(mapear(rs))
@@ -370,10 +406,14 @@ public class ClienteDAO {
                 INSERT INTO cliente
                 (
                     id_empresa,
+                    tipo_documento,
                     identificacion,
-                    nombres
+                    nombres,
+                    direccion,
+                    correo,
+                    telefono
                 )
-                VALUES (?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 RETURNING id_cliente
                 """;
 
@@ -392,16 +432,38 @@ public class ClienteDAO {
 
             ps.setString(
                     2,
-                    obj.getIdentificacion()
+                    obj.getTipoDocumento()
             );
 
             ps.setString(
                     3,
+                    obj.getIdentificacion()
+            );
+
+            ps.setString(
+                    4,
                     obj.getNombres()
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            ps.setString(
+                    5,
+                    obj.getDireccion()
+            );
+
+            ps.setString(
+                    6,
+                    obj.getCorreo()
+            );
+
+            ps.setString(
+                    7,
+                    obj.getTelefono()
+            );
+
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 if (!rs.next()) {
 
@@ -433,8 +495,12 @@ public class ClienteDAO {
         String sql = """
                 UPDATE cliente
                 SET id_empresa = ?,
+                    tipo_documento = ?,
                     identificacion = ?,
-                    nombres = ?
+                    nombres = ?,
+                    direccion = ?,
+                    correo = ?,
+                    telefono = ?
                 WHERE id_cliente = ?
                 """;
 
@@ -453,16 +519,36 @@ public class ClienteDAO {
 
             ps.setString(
                     2,
-                    obj.getIdentificacion()
+                    obj.getTipoDocumento()
             );
 
             ps.setString(
                     3,
+                    obj.getIdentificacion()
+            );
+
+            ps.setString(
+                    4,
                     obj.getNombres()
             );
 
+            ps.setString(
+                    5,
+                    obj.getDireccion()
+            );
+
+            ps.setString(
+                    6,
+                    obj.getCorreo()
+            );
+
+            ps.setString(
+                    7,
+                    obj.getTelefono()
+            );
+
             ps.setObject(
-                    4,
+                    8,
                     obj.getIdCliente()
             );
 
@@ -481,8 +567,12 @@ public class ClienteDAO {
 
         String sql = """
                 UPDATE cliente
-                SET identificacion = ?,
-                    nombres = ?
+                SET tipo_documento = ?,
+                    identificacion = ?,
+                    nombres = ?,
+                    direccion = ?,
+                    correo = ?,
+                    telefono = ?
                 WHERE id_cliente = ?
                   AND id_empresa = ?
                 """;
@@ -497,21 +587,41 @@ public class ClienteDAO {
 
             ps.setString(
                     1,
-                    obj.getIdentificacion()
+                    obj.getTipoDocumento()
             );
 
             ps.setString(
                     2,
+                    obj.getIdentificacion()
+            );
+
+            ps.setString(
+                    3,
                     obj.getNombres()
             );
 
+            ps.setString(
+                    4,
+                    obj.getDireccion()
+            );
+
+            ps.setString(
+                    5,
+                    obj.getCorreo()
+            );
+
+            ps.setString(
+                    6,
+                    obj.getTelefono()
+            );
+
             ps.setObject(
-                    3,
+                    7,
                     obj.getIdCliente()
             );
 
             ps.setObject(
-                    4,
+                    8,
                     idEmpresa
             );
 
@@ -611,6 +721,12 @@ public class ClienteDAO {
                 )
         );
 
+        obj.setTipoDocumento(
+                rs.getString(
+                        "tipo_documento"
+                )
+        );
+
         obj.setIdentificacion(
                 rs.getString(
                         "identificacion"
@@ -620,6 +736,24 @@ public class ClienteDAO {
         obj.setNombres(
                 rs.getString(
                         "nombres"
+                )
+        );
+
+        obj.setDireccion(
+                rs.getString(
+                        "direccion"
+                )
+        );
+
+        obj.setCorreo(
+                rs.getString(
+                        "correo"
+                )
+        );
+
+        obj.setTelefono(
+                rs.getString(
+                        "telefono"
                 )
         );
 

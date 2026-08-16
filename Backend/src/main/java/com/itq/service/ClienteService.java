@@ -9,15 +9,20 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public class ClienteService {
 
     private final ClienteDAO dao =
             new ClienteDAO();
 
+    private static final Pattern PATRON_CORREO =
+            Pattern.compile(
+                    "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$"
+            );
+
     // =========================================================
-    // LISTADO ANTIGUO
-    // Se conserva por compatibilidad
+    // LISTADO COMPLETO
     // =========================================================
 
     public List<Cliente> listar(
@@ -274,6 +279,40 @@ public class ClienteService {
             );
         }
 
+        // -----------------------------------------------------
+        // TIPO DOCUMENTO
+        // -----------------------------------------------------
+
+        if (vacio(
+                obj.getTipoDocumento()
+        )) {
+
+            throw new IllegalArgumentException(
+                    "El tipo de documento es obligatorio"
+            );
+        }
+
+        String tipoDocumento =
+                obj.getTipoDocumento()
+                        .trim()
+                        .toUpperCase();
+
+        if (!tipoDocumento.equals("CEDULA") &&
+                !tipoDocumento.equals("RUC")) {
+
+            throw new IllegalArgumentException(
+                    "El tipo de documento debe ser CEDULA o RUC"
+            );
+        }
+
+        obj.setTipoDocumento(
+                tipoDocumento
+        );
+
+        // -----------------------------------------------------
+        // IDENTIFICACIÓN
+        // -----------------------------------------------------
+
         if (vacio(
                 obj.getIdentificacion()
         )) {
@@ -288,33 +327,65 @@ public class ClienteService {
                         obj.getIdentificacion()
                 );
 
-        if (identificacion == null ||
-                identificacion.length() != 10) {
+        if (identificacion == null) {
 
             throw new IllegalArgumentException(
-                    "La cédula debe contener 10 dígitos"
+                    "La identificación es inválida"
             );
         }
 
-        if (!EcuadorValidator.cedulaValida(
-                identificacion
-        )) {
+        if (tipoDocumento.equals("CEDULA")) {
 
-            throw new IllegalArgumentException(
-                    "La cédula ecuatoriana no es válida"
-            );
+            if (identificacion.length() != 10) {
+
+                throw new IllegalArgumentException(
+                        "La cédula debe contener 10 dígitos"
+                );
+            }
+
+            if (!EcuadorValidator.cedulaValida(
+                    identificacion
+            )) {
+
+                throw new IllegalArgumentException(
+                        "La cédula ecuatoriana no es válida"
+                );
+            }
+        }
+
+        if (tipoDocumento.equals("RUC")) {
+
+            if (identificacion.length() != 13) {
+
+                throw new IllegalArgumentException(
+                        "El RUC debe contener 13 dígitos"
+                );
+            }
+
+            if (!EcuadorValidator.rucValido(
+                    identificacion
+            )) {
+
+                throw new IllegalArgumentException(
+                        "El RUC ecuatoriano no es válido"
+                );
+            }
         }
 
         obj.setIdentificacion(
                 identificacion
         );
 
+        // -----------------------------------------------------
+        // NOMBRES / RAZÓN SOCIAL
+        // -----------------------------------------------------
+
         if (vacio(
                 obj.getNombres()
         )) {
 
             throw new IllegalArgumentException(
-                    "Los nombres son obligatorios"
+                    "Los nombres o razón social son obligatorios"
             );
         }
 
@@ -322,10 +393,78 @@ public class ClienteService {
                 obj.getNombres()
                         .trim()
         );
+
+        // -----------------------------------------------------
+        // DIRECCIÓN
+        // -----------------------------------------------------
+
+        if (!vacio(
+                obj.getDireccion()
+        )) {
+
+            obj.setDireccion(
+                    obj.getDireccion()
+                            .trim()
+            );
+        }
+
+        // -----------------------------------------------------
+        // CORREO
+        // -----------------------------------------------------
+
+        if (!vacio(
+                obj.getCorreo()
+        )) {
+
+            String correo =
+                    obj.getCorreo()
+                            .trim()
+                            .toLowerCase();
+
+            if (!PATRON_CORREO
+                    .matcher(correo)
+                    .matches()) {
+
+                throw new IllegalArgumentException(
+                        "El correo electrónico no es válido"
+                );
+            }
+
+            obj.setCorreo(
+                    correo
+            );
+        }
+
+        // -----------------------------------------------------
+        // TELÉFONO
+        // -----------------------------------------------------
+
+        if (!vacio(
+                obj.getTelefono()
+        )) {
+
+            String telefono =
+                    EcuadorValidator.limpiarNumero(
+                            obj.getTelefono()
+                    );
+
+            if (telefono == null ||
+                    telefono.length() < 7 ||
+                    telefono.length() > 15) {
+
+                throw new IllegalArgumentException(
+                        "El teléfono no es válido"
+                );
+            }
+
+            obj.setTelefono(
+                    telefono
+            );
+        }
     }
 
     // =========================================================
-    // VALIDACIÓN PAGINACIÓN
+    // PAGINACIÓN
     // =========================================================
 
     private void validarPaginacion(
@@ -347,10 +486,6 @@ public class ClienteService {
             );
         }
 
-        /*
-         * Evitamos que un cliente pida por ejemplo
-         * 500000 registros en una sola petición.
-         */
         if (tamanio > 100) {
 
             throw new IllegalArgumentException(
@@ -360,7 +495,7 @@ public class ClienteService {
     }
 
     // =========================================================
-    // EMPRESA DEL JWT
+    // EMPRESA JWT
     // =========================================================
 
     private void validarEmpresaSesion(
