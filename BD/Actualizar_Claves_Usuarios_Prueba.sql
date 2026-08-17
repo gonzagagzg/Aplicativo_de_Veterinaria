@@ -1,9 +1,9 @@
 -- =========================================================================
 -- Actualiza la clave de los usuarios de prueba a un hash BCrypt real.
 --
--- El seed original (Script_Aplicacion_Veterinaria.sql) traia estos 5
+-- El seed original (Script_Aplicacion_Veterinaria.sql) traía estos 5
 -- usuarios con un hash falso ("$2b$12$ExampleHash1...") que nunca permite
--- iniciar sesion. Este script actualiza clave_hash sobre una base de datos
+-- iniciar sesión. Este script actualiza clave_hash sobre una base de datos
 -- ya existente, sin necesidad de volver a sembrarla desde cero.
 --
 -- Contraseña resultante para los 5 usuarios: Prueba123!
