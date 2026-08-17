@@ -350,12 +350,14 @@ INSERT INTO empresa (id_empresa, ruc, razon_social, direccion) VALUES
 -- 4. USUARIOS, PERSONAL Y CLIENTES
 -- =========================================================================
 
+-- Contraseña de todos los usuarios de prueba: Prueba123!
+-- (hash BCrypt real, cost 12, compatible con PasswordUtil.verificar del backend)
 INSERT INTO usuario (id_usuario, id_empresa, id_rol, usuario, clave_hash, nombres) VALUES
-                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 2, 'admin_quito', '$2b$12$ExampleHash1...', 'Carlos Mendoza'),
-                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 3, 'doc_juarez', '$2b$12$ExampleHash2...', 'Ana Juárez'),
-                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b33', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 2, 'admin_gye', '$2b$12$ExampleHash3...', 'Pedro Morales'),
-                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b44', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 3, 'doc_silva', '$2b$12$ExampleHash4...', 'Luis Silva'),
-                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b55', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 4, 'recep_lucia', '$2b$12$ExampleHash5...', 'Lucía Torres');
+                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 2, 'admin_quito', '$2a$12$y8Cvy6PssoEjD3ockjHv.Or0Nm9ALRg6UC8QhUbALNi2o0D5GdamO', 'Carlos Mendoza'),
+                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 3, 'doc_juarez', '$2a$12$AMw7LP.eKitsRLxZPlbM7uFUAAg.QJ/atKaiCgzXx2st1uztTL/v2', 'Ana Juárez'),
+                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b33', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 2, 'admin_gye', '$2a$12$zO6jKrUO1d7KCheik.0GqOGVt0rjDw7sxGAbkLGtQ8ZEfGVb4m9e6', 'Pedro Morales'),
+                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b44', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 3, 'doc_silva', '$2a$12$naeqCZu1OnwtR7ni45ceteXhZm/S50Iix5Mijwgpwf2qLoHBQJOwi', 'Luis Silva'),
+                                                                                       ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b55', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 4, 'recep_lucia', '$2a$12$wpvM4sowy9ulD19fTgX1fu68j.ZbyirO1eo.eAOPVtUowv2m6tBOq', 'Lucía Torres');
 
 INSERT INTO veterinario (id_veterinario, id_usuario, id_empresa, especialidad) VALUES
                                                                                    ('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Cirugía de Tejidos Blandos'),
@@ -723,6 +725,101 @@ FROM rol r
                   (p.modulo = 'PRODUCTOS' AND p.accion IN ('CREAR', 'EDITAR', 'LISTAR', 'VER'))
                   )
 WHERE r.nombre = 'Farmacéutico'
+    ON CONFLICT (id_rol, id_permiso) DO NOTHING;
+
+-- =========================================================================
+-- CATÁLOGO COMPLETO DE PERMISOS
+-- =========================================================================
+-- Las 5 filas originales de más arriba ('USUARIOS'/'CREAR', 'MASCOTAS'/'VER',
+-- 'Historial'/'Editar', 'FACTURAS'/'EMITIR', 'Inventario'/'Ajustar') no
+-- cubren ni de cerca los módulos que realmente valida
+-- Autorizacion.exigir(req, modulo, accion) en cada Servlet — y dos de ellas
+-- ('Historial'/'Editar', 'Inventario'/'Ajustar') ni siquiera coinciden en
+-- mayúsculas/nombre con los módulos reales ('HISTORIALES', 'INVENTARIO'),
+-- por lo que jamás conceden nada. Resultado: salvo Farmacéutico y
+-- SuperUsuario, ningún rol podía operar casi ningún módulo ("No tiene
+-- permisos para realizar esta operación").
+--
+-- Este bloque agrega el catálogo real (LISTAR/VER/CREAR/EDITAR/ELIMINAR por
+-- módulo, más EMITIR en FACTURAS y ACTIVAR/DESACTIVAR en EMPRESAS) leído
+-- directamente de cada Servlet. Es aditivo e idempotente (ON CONFLICT DO
+-- NOTHING): no borra las filas viejas, solo completa lo que falta.
+
+INSERT INTO permiso (modulo, accion)
+SELECT modulo, accion FROM (VALUES
+    ('CATEGORIAS','LISTAR'), ('CATEGORIAS','VER'), ('CATEGORIAS','CREAR'), ('CATEGORIAS','EDITAR'), ('CATEGORIAS','ELIMINAR'),
+    ('CITAS','LISTAR'),      ('CITAS','VER'),      ('CITAS','CREAR'),      ('CITAS','EDITAR'),      ('CITAS','ELIMINAR'),
+    ('CLIENTES','LISTAR'),   ('CLIENTES','VER'),   ('CLIENTES','CREAR'),   ('CLIENTES','EDITAR'),   ('CLIENTES','ELIMINAR'),
+    ('HISTORIALES','LISTAR'),('HISTORIALES','VER'),('HISTORIALES','CREAR'),('HISTORIALES','EDITAR'),('HISTORIALES','ELIMINAR'),
+    ('MASCOTAS','LISTAR'),   ('MASCOTAS','VER'),   ('MASCOTAS','CREAR'),   ('MASCOTAS','EDITAR'),   ('MASCOTAS','ELIMINAR'),
+    ('INVENTARIO','LISTAR'), ('INVENTARIO','VER'), ('INVENTARIO','CREAR'), ('INVENTARIO','EDITAR'), ('INVENTARIO','ELIMINAR'),
+    ('PRODUCTOS','LISTAR'),  ('PRODUCTOS','VER'),  ('PRODUCTOS','CREAR'),  ('PRODUCTOS','EDITAR'),  ('PRODUCTOS','ELIMINAR'),
+    ('USUARIOS','LISTAR'),   ('USUARIOS','VER'),   ('USUARIOS','CREAR'),   ('USUARIOS','EDITAR'),   ('USUARIOS','ELIMINAR'),
+    ('VETERINARIOS','LISTAR'),('VETERINARIOS','VER'),('VETERINARIOS','CREAR'),('VETERINARIOS','EDITAR'),('VETERINARIOS','ELIMINAR'),
+    ('FACTURAS','LISTAR'),   ('FACTURAS','VER'),   ('FACTURAS','CREAR'),   ('FACTURAS','EDITAR'),   ('FACTURAS','ELIMINAR'), ('FACTURAS','EMITIR'),
+    ('EMPRESAS','LISTAR'),   ('EMPRESAS','VER'),   ('EMPRESAS','CREAR'),   ('EMPRESAS','EDITAR'),   ('EMPRESAS','ACTIVAR'), ('EMPRESAS','DESACTIVAR')
+) AS catalogo(modulo, accion)
+ON CONFLICT (modulo, accion) DO NOTHING;
+
+-- =========================================================================
+-- ASIGNAR PERMISOS A ADMINISTRADOR GLOBAL Y ADMINISTRADOR LOCAL
+-- =========================================================================
+-- Gerencia/administración de una veterinaria: acceso completo a todos los
+-- módulos clínicos y comerciales de su propia empresa. EMPRESAS queda fuera
+-- a propósito: ese módulo está reservado a SuperUsuario a nivel de código
+-- (EmpresaServlet.exigirSuperUsuario), con permiso o sin él.
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+         JOIN permiso p ON p.modulo IN (
+    'CATEGORIAS','CITAS','CLIENTES','HISTORIALES','MASCOTAS',
+    'INVENTARIO','PRODUCTOS','USUARIOS','VETERINARIOS','FACTURAS'
+)
+WHERE r.nombre IN ('Administrador Global', 'Administrador Local')
+    ON CONFLICT (id_rol, id_permiso) DO NOTHING;
+
+-- =========================================================================
+-- ASIGNAR PERMISOS A VETERINARIO
+-- =========================================================================
+-- Atención clínica: agenda propia, historiales y recetas (sin permiso
+-- dedicado, ver nota abajo), consulta de clientes/mascotas y de stock de
+-- productos para prescribir — sin gestionar usuarios, empresas ni facturación.
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+         JOIN permiso p ON (
+        (p.modulo = 'CITAS' AND p.accion IN ('LISTAR','VER','CREAR','EDITAR'))
+        OR (p.modulo = 'HISTORIALES' AND p.accion IN ('LISTAR','VER','CREAR','EDITAR'))
+        OR (p.modulo = 'MASCOTAS' AND p.accion IN ('LISTAR','VER','EDITAR'))
+        OR (p.modulo = 'CLIENTES' AND p.accion IN ('LISTAR','VER'))
+        OR (p.modulo = 'PRODUCTOS' AND p.accion IN ('LISTAR','VER'))
+        OR (p.modulo = 'VETERINARIOS' AND p.accion IN ('LISTAR','VER'))
+    )
+WHERE r.nombre = 'Veterinario'
+    ON CONFLICT (id_rol, id_permiso) DO NOTHING;
+
+-- =========================================================================
+-- ASIGNAR PERMISOS A RECEPCIONISTA
+-- =========================================================================
+-- Front desk: agenda, clientes y mascotas completos, factura al cliente
+-- (incluye EMITIR), consulta de veterinarios/productos/historiales — sin
+-- editar historias clínicas ni gestionar usuarios/inventario.
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+         JOIN permiso p ON (
+        (p.modulo = 'CITAS' AND p.accion IN ('LISTAR','VER','CREAR','EDITAR','ELIMINAR'))
+        OR (p.modulo = 'CLIENTES' AND p.accion IN ('LISTAR','VER','CREAR','EDITAR'))
+        OR (p.modulo = 'MASCOTAS' AND p.accion IN ('LISTAR','VER','CREAR','EDITAR'))
+        OR (p.modulo = 'FACTURAS' AND p.accion IN ('LISTAR','VER','CREAR','EMITIR'))
+        OR (p.modulo = 'VETERINARIOS' AND p.accion IN ('LISTAR','VER'))
+        OR (p.modulo = 'PRODUCTOS' AND p.accion IN ('LISTAR','VER'))
+        OR (p.modulo = 'HISTORIALES' AND p.accion IN ('LISTAR','VER'))
+    )
+WHERE r.nombre = 'Recepcionista'
     ON CONFLICT (id_rol, id_permiso) DO NOTHING;
 
 -- =========================================================================
