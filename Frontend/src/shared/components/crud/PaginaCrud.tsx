@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Info, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { TablaDatos } from '../TablaDatos'
 import { Boton, CabeceraPagina, Cargando, MensajeError, Modal } from '../ui'
@@ -119,6 +119,12 @@ export function PaginaCrud<T extends object>({
     }
   }
 
+  // El SuperUsuario ve todos los registros de todas las veterinarias, pero
+  // el backend rechaza la creación de estos recursos sin una empresa
+  // concreta (ver comentario más arriba): en vez de dejar que el formulario
+  // falle con un error de validación críptico, se oculta el alta.
+  const creacionBloqueadaPorSuper = multiEmpresa && esSuper
+
   if (lista.isLoading) return <Cargando />
 
   return (
@@ -127,12 +133,25 @@ export function PaginaCrud<T extends object>({
         titulo={titulo}
         descripcion={descripcion}
         acciones={
-          <Boton onClick={abrirCreacion}>
-            <Plus className="h-4 w-4" />
-            Nuevo
-          </Boton>
+          creacionBloqueadaPorSuper ? undefined : (
+            <Boton onClick={abrirCreacion}>
+              <Plus className="h-4 w-4" />
+              Nuevo
+            </Boton>
+          )
         }
       />
+
+      {creacionBloqueadaPorSuper && (
+        <div className="mb-4 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <p>
+            Como SuperUsuario puedes consultar los registros de todas las veterinarias, pero
+            crear un nuevo {singular} requiere iniciar sesión con un usuario que pertenezca a una
+            veterinaria específica.
+          </p>
+        </div>
+      )}
 
       {lista.isError && (
         <div className="mb-4">

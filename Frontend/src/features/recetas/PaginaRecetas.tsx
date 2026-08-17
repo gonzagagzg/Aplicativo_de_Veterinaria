@@ -11,7 +11,6 @@ import {
 import { TablaDatos } from '@/shared/components/TablaDatos'
 import { Badge, CabeceraPagina, Cargando, MensajeError } from '@/shared/components/ui'
 import { formatearFechaHora, indexarPor } from '@/shared/lib/utils'
-import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
 import type { Receta } from '@/shared/types/api'
 
 /**
@@ -20,7 +19,6 @@ import type { Receta } from '@/shared/types/api'
  */
 export function PaginaRecetas() {
   const navigate = useNavigate()
-  const idEmpresa = useSesion((s) => s.idEmpresa)
 
   const recetas = recetasApi.useLista()
   const detalles = recetaDetallesApi.useLista()
@@ -38,7 +36,9 @@ export function PaginaRecetas() {
     return mapa
   }, [detalles.data])
 
-  const datos = useMemo(() => filtrarPorEmpresa(recetas.data, idEmpresa), [recetas.data, idEmpresa])
+  // El backend ya filtra por empresa activa a partir del token (ver
+  // RecetaServlet), así que no hace falta re-filtrar aquí.
+  const datos = recetas.data ?? []
 
   const citaDeReceta = (r: Receta) => {
     const historial = porHistorial.get(r.idHistorial)

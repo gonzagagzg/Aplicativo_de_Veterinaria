@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Plus, Receipt, Trash2 } from 'lucide-react'
+import { Info, Plus, Receipt, Trash2 } from 'lucide-react'
 import { api } from '@/shared/api/client'
 import {
   facturaDetallesApi,
@@ -24,6 +24,7 @@ import {
   Select,
 } from '@/shared/components/ui'
 import { formatearFechaHora, formatearMoneda, indexarPor } from '@/shared/lib/utils'
+import { useEsSuperUsuario } from '@/shared/session/sesion'
 import type { Factura, FacturaEmitirRequest, Producto } from '@/shared/types/api'
 
 interface LineaCarrito {
@@ -44,6 +45,7 @@ interface LineaCarrito {
 export function PaginaFacturas() {
   const [modalAbierto, setModalAbierto] = useState(false)
   const [facturaVista, setFacturaVista] = useState<Factura | null>(null)
+  const esSuper = useEsSuperUsuario()
 
   const facturas = facturasApi.useLista()
   const clientes = useClientesTodos()
@@ -115,12 +117,25 @@ export function PaginaFacturas() {
         titulo="Facturación"
         descripcion="Comprobantes emitidos"
         acciones={
-          <Boton onClick={() => setModalAbierto(true)}>
-            <Plus className="h-4 w-4" />
-            Nueva factura
-          </Boton>
+          esSuper ? undefined : (
+            <Boton onClick={() => setModalAbierto(true)}>
+              <Plus className="h-4 w-4" />
+              Nueva factura
+            </Boton>
+          )
         }
       />
+
+      {esSuper && (
+        <div className="mb-4 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <p>
+            Como SuperUsuario puedes consultar las facturas de todas las veterinarias, pero
+            emitir una factura requiere iniciar sesión con un usuario que pertenezca a una
+            veterinaria específica.
+          </p>
+        </div>
+      )}
 
       {facturas.isError && (
         <div className="mb-4">
