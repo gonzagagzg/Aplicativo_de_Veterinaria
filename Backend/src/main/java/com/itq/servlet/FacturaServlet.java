@@ -29,6 +29,10 @@ public class FacturaServlet extends HttpServlet {
             facturacionService =
             new FacturacionTransaccionalService();
 
+    // =========================================================
+    // CONSULTAR FACTURAS
+    // =========================================================
+
     @Override
     protected void doGet(
             HttpServletRequest req,
@@ -46,6 +50,7 @@ public class FacturaServlet extends HttpServlet {
             String raw =
                     valorId(req);
 
+            // GET /api/facturas
             if (raw == null) {
 
                 Autorizacion.exigir(
@@ -69,6 +74,7 @@ public class FacturaServlet extends HttpServlet {
                 return;
             }
 
+            // /emitir solamente acepta POST
             if (raw.equalsIgnoreCase("emitir")) {
 
                 HttpUtil.error(
@@ -80,6 +86,7 @@ public class FacturaServlet extends HttpServlet {
                 return;
             }
 
+            // GET /api/facturas/{id}
             Autorizacion.exigir(
                     req,
                     "FACTURAS",
@@ -150,6 +157,10 @@ public class FacturaServlet extends HttpServlet {
         }
     }
 
+    // =========================================================
+    // EMITIR FACTURA
+    // =========================================================
+
     @Override
     protected void doPost(
             HttpServletRequest req,
@@ -170,7 +181,10 @@ public class FacturaServlet extends HttpServlet {
             String path =
                     req.getPathInfo();
 
+            // =================================================
             // POST /api/facturas/emitir
+            // =================================================
+
             if (path != null &&
                     path.equalsIgnoreCase("/emitir")) {
 
@@ -207,35 +221,15 @@ public class FacturaServlet extends HttpServlet {
                 return;
             }
 
+            // =================================================
             // POST /api/facturas
-            Autorizacion.exigir(
-                    req,
-                    "FACTURAS",
-                    "CREAR"
-            );
+            // BLOQUEADO
+            // =================================================
 
-            Factura obj =
-                    JsonUtil.gson()
-                            .fromJson(
-                                    req.getReader(),
-                                    Factura.class
-                            );
-
-            Factura creada =
-                    service.crear(
-                            obj,
-                            idEmpresa,
-                            idUsuario,
-                            superUsuario
-                    );
-
-            HttpUtil.json(
+            HttpUtil.error(
                     resp,
-                    201,
-                    ApiResponse.ok(
-                            "Registro creado",
-                            creada
-                    )
+                    405,
+                    "Las facturas únicamente pueden generarse mediante /api/facturas/emitir"
             );
 
         } catch (SecurityException e) {
@@ -281,144 +275,26 @@ public class FacturaServlet extends HttpServlet {
         }
     }
 
+    // =========================================================
+    // MODIFICAR FACTURA EMITIDA - BLOQUEADO
+    // =========================================================
+
     @Override
     protected void doPut(
             HttpServletRequest req,
             HttpServletResponse resp
     ) throws IOException {
 
-        try {
-
-            Autorizacion.exigir(
-                    req,
-                    "FACTURAS",
-                    "EDITAR"
-            );
-
-            UUID idEmpresa =
-                    obtenerIdEmpresa(req);
-
-            UUID idUsuario =
-                    obtenerIdUsuario(req);
-
-            boolean superUsuario =
-                    esSuperUsuario(req);
-
-            String raw =
-                    valorId(req);
-
-            if (raw == null) {
-
-                HttpUtil.error(
-                        resp,
-                        400,
-                        "Identificador obligatorio"
-                );
-
-                return;
-            }
-
-            if (raw.equalsIgnoreCase("emitir")) {
-
-                HttpUtil.error(
-                        resp,
-                        405,
-                        "Método no permitido"
-                );
-
-                return;
-            }
-
-            UUID id =
-                    UUID.fromString(raw);
-
-            Factura obj =
-                    JsonUtil.gson()
-                            .fromJson(
-                                    req.getReader(),
-                                    Factura.class
-                            );
-
-            if (obj == null) {
-
-                HttpUtil.error(
-                        resp,
-                        400,
-                        "Los datos de la factura son obligatorios"
-                );
-
-                return;
-            }
-
-            obj.setIdFactura(id);
-
-            if (!service.actualizar(
-                    obj,
-                    idEmpresa,
-                    idUsuario,
-                    superUsuario
-            )) {
-
-                HttpUtil.error(
-                        resp,
-                        404,
-                        "Registro no encontrado"
-                );
-
-                return;
-            }
-
-            HttpUtil.json(
-                    resp,
-                    200,
-                    ApiResponse.ok(
-                            "Registro actualizado",
-                            obj
-                    )
-            );
-
-        } catch (SecurityException e) {
-
-            HttpUtil.error(
-                    resp,
-                    403,
-                    e.getMessage()
-            );
-
-        } catch (IllegalArgumentException e) {
-
-            HttpUtil.error(
-                    resp,
-                    400,
-                    e.getMessage()
-            );
-
-        } catch (SQLException e) {
-
-            HttpUtil.error(
-                    resp,
-                    SqlErrorUtil.estadoHttp(e),
-                    e.getMessage()
-            );
-
-        } catch (IllegalStateException e) {
-
-            HttpUtil.error(
-                    resp,
-                    500,
-                    e.getMessage()
-            );
-
-        } catch (Exception e) {
-
-            HttpUtil.error(
-                    resp,
-                    400,
-                    "Datos inválidos: "
-                            + e.getMessage()
-            );
-        }
+        HttpUtil.error(
+                resp,
+                405,
+                "Las facturas emitidas no pueden modificarse directamente"
+        );
     }
+
+    // =========================================================
+    // ELIMINAR FACTURA EMITIDA - BLOQUEADO
+    // =========================================================
 
     @Override
     protected void doDelete(
@@ -426,100 +302,16 @@ public class FacturaServlet extends HttpServlet {
             HttpServletResponse resp
     ) throws IOException {
 
-        try {
-
-            Autorizacion.exigir(
-                    req,
-                    "FACTURAS",
-                    "ELIMINAR"
-            );
-
-            UUID idEmpresa =
-                    obtenerIdEmpresa(req);
-
-            boolean superUsuario =
-                    esSuperUsuario(req);
-
-            String raw =
-                    valorId(req);
-
-            if (raw == null) {
-
-                HttpUtil.error(
-                        resp,
-                        400,
-                        "Identificador obligatorio"
-                );
-
-                return;
-            }
-
-            if (raw.equalsIgnoreCase("emitir")) {
-
-                HttpUtil.error(
-                        resp,
-                        405,
-                        "Método no permitido"
-                );
-
-                return;
-            }
-
-            UUID id =
-                    UUID.fromString(raw);
-
-            if (!service.eliminar(
-                    id,
-                    idEmpresa,
-                    superUsuario
-            )) {
-
-                HttpUtil.error(
-                        resp,
-                        404,
-                        "Registro no encontrado"
-                );
-
-                return;
-            }
-
-            resp.setStatus(
-                    HttpServletResponse.SC_NO_CONTENT
-            );
-
-        } catch (SecurityException e) {
-
-            HttpUtil.error(
-                    resp,
-                    403,
-                    e.getMessage()
-            );
-
-        } catch (IllegalArgumentException e) {
-
-            HttpUtil.error(
-                    resp,
-                    400,
-                    "Identificador inválido"
-            );
-
-        } catch (SQLException e) {
-
-            HttpUtil.error(
-                    resp,
-                    SqlErrorUtil.estadoHttp(e),
-                    e.getMessage()
-            );
-
-        } catch (IllegalStateException e) {
-
-            HttpUtil.error(
-                    resp,
-                    500,
-                    e.getMessage()
-            );
-        }
+        HttpUtil.error(
+                resp,
+                405,
+                "Las facturas emitidas no pueden eliminarse directamente"
+        );
     }
+
+    // =========================================================
+    // EMPRESA DESDE JWT
+    // =========================================================
 
     private UUID obtenerIdEmpresa(
             HttpServletRequest req
@@ -529,6 +321,10 @@ public class FacturaServlet extends HttpServlet {
                 req.getAttribute("idEmpresa");
     }
 
+    // =========================================================
+    // USUARIO DESDE JWT
+    // =========================================================
+
     private UUID obtenerIdUsuario(
             HttpServletRequest req
     ) {
@@ -536,6 +332,10 @@ public class FacturaServlet extends HttpServlet {
         return (UUID)
                 req.getAttribute("idUsuario");
     }
+
+    // =========================================================
+    // SUPERUSUARIO
+    // =========================================================
 
     private boolean esSuperUsuario(
             HttpServletRequest req
@@ -550,6 +350,10 @@ public class FacturaServlet extends HttpServlet {
                         "SuperUsuario"
                 );
     }
+
+    // =========================================================
+    // ID DESDE URL
+    // =========================================================
 
     private String valorId(
             HttpServletRequest req

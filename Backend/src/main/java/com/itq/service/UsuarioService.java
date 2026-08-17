@@ -7,11 +7,29 @@ import com.itq.util.PasswordUtil;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public class UsuarioService {
 
-    private final UsuarioDAO dao = new UsuarioDAO();
+    private final UsuarioDAO dao =
+            new UsuarioDAO();
+
+    /*
+     * Roles que un usuario local puede asignar
+     * a empleados de su propia veterinaria.
+     *
+     * 3 = Veterinario
+     * 4 = Recepcionista
+     * 5 = Asistente Clínico
+     * 7 = Farmacéutico
+     */
+    private static final Set<Integer> ROLES_EMPLEADOS =
+            Set.of(3, 4, 5, 7);
+
+    // =========================================================
+    // LISTAR
+    // =========================================================
 
     public List<Usuario> listar(
             UUID idEmpresa,
@@ -19,13 +37,50 @@ public class UsuarioService {
     ) throws SQLException {
 
         if (superUsuario) {
+
             return dao.listar();
         }
 
-        validarEmpresaSesion(idEmpresa);
+        validarEmpresaSesion(
+                idEmpresa
+        );
 
-        return dao.listarPorEmpresa(idEmpresa);
+        return dao.listarPorEmpresa(
+                idEmpresa
+        );
     }
+
+    // =========================================================
+    // SUPERUSUARIO - LISTAR USUARIOS DE UNA EMPRESA
+    // =========================================================
+
+    public List<Usuario> listarPorEmpresaSuperUsuario(
+            UUID idEmpresa,
+            boolean superUsuario
+    ) throws SQLException {
+
+        if (!superUsuario) {
+
+            throw new SecurityException(
+                    "Esta operación requiere SuperUsuario"
+            );
+        }
+
+        if (idEmpresa == null) {
+
+            throw new IllegalArgumentException(
+                    "La empresa es obligatoria"
+            );
+        }
+
+        return dao.listarPorEmpresa(
+                idEmpresa
+        );
+    }
+
+    // =========================================================
+    // BUSCAR POR ID
+    // =========================================================
 
     public Optional<Usuario> buscarPorId(
             UUID idUsuario,
@@ -33,17 +88,33 @@ public class UsuarioService {
             boolean superUsuario
     ) throws SQLException {
 
-        if (superUsuario) {
-            return dao.buscarPorId(idUsuario);
+        if (idUsuario == null) {
+
+            throw new IllegalArgumentException(
+                    "El usuario es obligatorio"
+            );
         }
 
-        validarEmpresaSesion(idEmpresa);
+        if (superUsuario) {
+
+            return dao.buscarPorId(
+                    idUsuario
+            );
+        }
+
+        validarEmpresaSesion(
+                idEmpresa
+        );
 
         return dao.buscarPorIdYEmpresa(
                 idUsuario,
                 idEmpresa
         );
     }
+
+    // =========================================================
+    // CREAR
+    // =========================================================
 
     public Usuario crear(
             Usuario obj,
@@ -52,48 +123,77 @@ public class UsuarioService {
     ) throws SQLException {
 
         if (obj == null) {
+
             throw new IllegalArgumentException(
                     "Los datos del usuario son obligatorios"
             );
         }
 
         /*
-         * Un usuario normal NO decide a qué empresa
-         * pertenece el nuevo empleado.
+         * Un usuario local NO puede decidir
+         * a qué empresa pertenece el empleado.
          */
         if (!superUsuario) {
-            validarEmpresaSesion(idEmpresa);
-            obj.setIdEmpresa(idEmpresa);
+
+            validarEmpresaSesion(
+                    idEmpresa
+            );
+
+            obj.setIdEmpresa(
+                    idEmpresa
+            );
+
+            /*
+             * Un usuario local solamente puede
+             * asignar roles de empleados.
+             */
+            validarRolEmpleado(
+                    obj.getIdRol()
+            );
         }
 
-        validarBase(obj);
+        validarBase(
+                obj
+        );
 
-        if (vacio(obj.getClaveHash())) {
+        if (vacio(
+                obj.getClaveHash()
+        )) {
+
             throw new IllegalArgumentException(
                     "La contraseña es obligatoria"
             );
         }
 
         /*
-         * Lo recibido como claveHash desde el JSON
-         * se considera contraseña nueva en texto plano.
-         * Antes de guardar SIEMPRE se convierte a BCrypt.
+         * La contraseña recibida se transforma
+         * a BCrypt antes de guardarse.
          */
         obj.setClaveHash(
                 PasswordUtil.hash(
-                        obj.getClaveHash().trim()
+                        obj.getClaveHash()
+                                .trim()
                 )
         );
 
-        Usuario creado = dao.insertar(obj);
+        Usuario creado =
+                dao.insertar(
+                        obj
+                );
 
         /*
-         * Nunca devolvemos el hash al cliente.
+         * Nunca se devuelve el hash.
          */
-        creado.setClaveHash(null);
+        creado.setClaveHash(
+                null
+        );
 
         return creado;
     }
+
+    // =========================================================
+    // ACTUALIZAR
+    // =========================================================
 
     public boolean actualizar(
             Usuario obj,
@@ -101,48 +201,70 @@ public class UsuarioService {
             boolean superUsuario
     ) throws SQLException {
 
-        if (obj == null || obj.getIdUsuario() == null) {
+        if (obj == null ||
+                obj.getIdUsuario() == null) {
+
             throw new IllegalArgumentException(
                     "Los datos del usuario son obligatorios"
             );
         }
 
         Optional<Usuario> existenteOpt =
-                dao.buscarPorIdConHash(obj.getIdUsuario());
+                dao.buscarPorIdConHash(
+                        obj.getIdUsuario()
+                );
 
         if (existenteOpt.isEmpty()) {
+
             return false;
         }
 
-        Usuario existente = existenteOpt.get();
+        Usuario existente =
+                existenteOpt.get();
 
         /*
-         * Un usuario normal no puede modificar
-         * usuarios de otra empresa.
+         * Un usuario local solamente puede modificar
+         * empleados pertenecientes a su veterinaria.
          */
         if (!superUsuario) {
 
-            validarEmpresaSesion(idEmpresa);
+            validarEmpresaSesion(
+                    idEmpresa
+            );
 
             if (!idEmpresa.equals(
                     existente.getIdEmpresa()
             )) {
+
                 return false;
             }
 
-            obj.setIdEmpresa(idEmpresa);
+            /*
+             * La empresa se toma del JWT.
+             */
+            obj.setIdEmpresa(
+                    idEmpresa
+            );
+
+            /*
+             * Tampoco puede escalar privilegios.
+             */
+            validarRolEmpleado(
+                    obj.getIdRol()
+            );
         }
 
-        validarBase(obj);
+        validarBase(
+                obj
+        );
 
         /*
-         * Si el PUT no trae contraseña nueva,
-         * conservamos el hash existente.
-         *
-         * Si trae una contraseña,
-         * generamos un BCrypt nuevo.
+         * Si no llega contraseña nueva,
+         * conservamos el hash actual.
          */
-        if (vacio(obj.getClaveHash())) {
+        if (vacio(
+                obj.getClaveHash()
+        )) {
 
             obj.setClaveHash(
                     existente.getClaveHash()
@@ -152,13 +274,17 @@ public class UsuarioService {
 
             obj.setClaveHash(
                     PasswordUtil.hash(
-                            obj.getClaveHash().trim()
+                            obj.getClaveHash()
+                                    .trim()
                     )
             );
         }
 
         if (superUsuario) {
-            return dao.actualizar(obj);
+
+            return dao.actualizar(
+                    obj
+            );
         }
 
         return dao.actualizarPorEmpresa(
@@ -167,17 +293,60 @@ public class UsuarioService {
         );
     }
 
+    // =========================================================
+    // ELIMINAR
+    // =========================================================
+    /*
+     * NOTA:
+     * Este módulo todavía utiliza eliminación física.
+     * La migración general a soft delete quedó pendiente
+     * para la revisión global del proyecto.
+     */
+    // =========================================================
+
     public boolean eliminar(
             UUID idUsuario,
             UUID idEmpresa,
             boolean superUsuario
     ) throws SQLException {
 
-        if (superUsuario) {
-            return dao.eliminar(idUsuario);
+        if (idUsuario == null) {
+
+            throw new IllegalArgumentException(
+                    "El usuario es obligatorio"
+            );
         }
 
-        validarEmpresaSesion(idEmpresa);
+        if (superUsuario) {
+
+            return dao.eliminar(
+                    idUsuario
+            );
+        }
+
+        validarEmpresaSesion(
+                idEmpresa
+        );
+
+        Optional<Usuario> existente =
+                dao.buscarPorIdYEmpresa(
+                        idUsuario,
+                        idEmpresa
+                );
+
+        if (existente.isEmpty()) {
+
+            return false;
+        }
+
+        /*
+         * Un usuario local tampoco puede eliminar
+         * una cuenta con rol reservado.
+         */
+        validarRolEmpleado(
+                existente.get()
+                        .getIdRol()
+        );
 
         return dao.eliminarPorEmpresa(
                 idUsuario,
@@ -185,9 +354,16 @@ public class UsuarioService {
         );
     }
 
-    private void validarBase(Usuario obj) {
+    // =========================================================
+    // VALIDACIÓN BASE
+    // =========================================================
+
+    private void validarBase(
+            Usuario obj
+    ) {
 
         if (obj.getIdEmpresa() == null) {
+
             throw new IllegalArgumentException(
                     "La empresa es obligatoria"
             );
@@ -201,43 +377,90 @@ public class UsuarioService {
             );
         }
 
-        if (vacio(obj.getUsuario())) {
+        if (vacio(
+                obj.getUsuario()
+        )) {
+
             throw new IllegalArgumentException(
                     "El nombre de usuario es obligatorio"
             );
         }
 
-        if (vacio(obj.getNombres())) {
+        if (vacio(
+                obj.getNombres()
+        )) {
+
             throw new IllegalArgumentException(
                     "Los nombres son obligatorios"
             );
         }
 
         if (obj.isActivo() == null) {
+
             throw new IllegalArgumentException(
                     "El estado activo es obligatorio"
             );
         }
 
         obj.setUsuario(
-                obj.getUsuario().trim()
+                obj.getUsuario()
+                        .trim()
         );
 
         obj.setNombres(
-                obj.getNombres().trim()
+                obj.getNombres()
+                        .trim()
         );
     }
 
-    private void validarEmpresaSesion(UUID idEmpresa) {
+    // =========================================================
+    // VALIDAR ROL EMPLEADO
+    // =========================================================
+
+    private void validarRolEmpleado(
+            Integer idRol
+    ) {
+
+        if (idRol == null) {
+
+            throw new IllegalArgumentException(
+                    "El rol es obligatorio"
+            );
+        }
+
+        if (!ROLES_EMPLEADOS.contains(
+                idRol
+        )) {
+
+            throw new SecurityException(
+                    "No tiene autorización para asignar este rol"
+            );
+        }
+    }
+
+    // =========================================================
+    // EMPRESA DEL JWT
+    // =========================================================
+
+    private void validarEmpresaSesion(
+            UUID idEmpresa
+    ) {
 
         if (idEmpresa == null) {
+
             throw new SecurityException(
                     "El usuario no tiene una empresa asignada"
             );
         }
     }
 
-    private boolean vacio(String valor) {
+    // =========================================================
+    // UTILIDAD
+    // =========================================================
+
+    private boolean vacio(
+            String valor
+    ) {
 
         return valor == null ||
                 valor.trim().isEmpty();

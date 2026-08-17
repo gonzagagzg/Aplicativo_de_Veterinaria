@@ -1,9 +1,9 @@
 package com.itq.servlet;
 
 import com.itq.dto.ApiResponse;
-import com.itq.model.Usuario;
+import com.itq.model.MensualidadEmpresa;
 import com.itq.security.Autorizacion;
-import com.itq.service.UsuarioService;
+import com.itq.service.MensualidadEmpresaService;
 import com.itq.util.HttpUtil;
 import com.itq.util.JsonUtil;
 import com.itq.util.SqlErrorUtil;
@@ -17,11 +17,11 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.UUID;
 
-@WebServlet("/api/usuarios/*")
-public class UsuarioServlet extends HttpServlet {
+@WebServlet("/api/mensualidades/*")
+public class MensualidadEmpresaServlet extends HttpServlet {
 
-    private final UsuarioService service =
-            new UsuarioService();
+    private final MensualidadEmpresaService service =
+            new MensualidadEmpresaService();
 
     // =========================================================
     // GET
@@ -35,30 +35,18 @@ public class UsuarioServlet extends HttpServlet {
 
         try {
 
-            UUID idEmpresa =
-                    obtenerIdEmpresa(
-                            req
-                    );
-
-            boolean superUsuario =
-                    esSuperUsuario(
-                            req
-                    );
-
             String raw =
-                    valorId(
-                            req
-                    );
+                    valorId(req);
 
-            // =================================================
-            // GET /api/usuarios
-            // =================================================
+            // -------------------------------------------------
+            // GET /api/mensualidades
+            // -------------------------------------------------
 
             if (raw == null) {
 
                 Autorizacion.exigir(
                         req,
-                        "USUARIOS",
+                        "MENSUALIDADES",
                         "LISTAR"
                 );
 
@@ -67,41 +55,27 @@ public class UsuarioServlet extends HttpServlet {
                         200,
                         ApiResponse.ok(
                                 "Listado",
-                                service.listar(
-                                        idEmpresa,
-                                        superUsuario
-                                )
+                                service.listar()
                         )
                 );
 
                 return;
             }
 
-            // =================================================
-            // GET /api/usuarios/empresa/{idEmpresa}
-            // =================================================
+            // -------------------------------------------------
+            // GET /api/mensualidades/empresa/{idEmpresa}
+            // -------------------------------------------------
 
-            if (raw.equalsIgnoreCase(
-                    "empresa"
-            )) {
+            if (raw.equalsIgnoreCase("empresa")) {
 
                 Autorizacion.exigir(
                         req,
-                        "USUARIOS",
+                        "MENSUALIDADES",
                         "LISTAR"
                 );
 
-                if (!superUsuario) {
-
-                    throw new SecurityException(
-                            "Esta operación requiere SuperUsuario"
-                    );
-                }
-
                 String idEmpresaRaw =
-                        segundoValor(
-                                req
-                        );
+                        segundoValor(req);
 
                 if (idEmpresaRaw == null) {
 
@@ -114,7 +88,7 @@ public class UsuarioServlet extends HttpServlet {
                     return;
                 }
 
-                UUID empresaSeleccionada =
+                UUID idEmpresa =
                         UUID.fromString(
                                 idEmpresaRaw
                         );
@@ -123,10 +97,9 @@ public class UsuarioServlet extends HttpServlet {
                         resp,
                         200,
                         ApiResponse.ok(
-                                "Usuarios de la empresa",
-                                service.listarPorEmpresaSuperUsuario(
-                                        empresaSeleccionada,
-                                        true
+                                "Listado",
+                                service.listarPorEmpresa(
+                                        idEmpresa
                                 )
                         )
                 );
@@ -134,27 +107,21 @@ public class UsuarioServlet extends HttpServlet {
                 return;
             }
 
-            // =================================================
-            // GET /api/usuarios/{id}
-            // =================================================
+            // -------------------------------------------------
+            // GET /api/mensualidades/{id}
+            // -------------------------------------------------
 
             Autorizacion.exigir(
                     req,
-                    "USUARIOS",
+                    "MENSUALIDADES",
                     "VER"
             );
 
             UUID id =
-                    UUID.fromString(
-                            raw
-                    );
+                    UUID.fromString(raw);
 
             var encontrado =
-                    service.buscarPorId(
-                            id,
-                            idEmpresa,
-                            superUsuario
-                    );
+                    service.buscarPorId(id);
 
             if (encontrado.isEmpty()) {
 
@@ -211,7 +178,7 @@ public class UsuarioServlet extends HttpServlet {
     }
 
     // =========================================================
-    // POST
+    // POST - CREAR
     // =========================================================
 
     @Override
@@ -224,37 +191,26 @@ public class UsuarioServlet extends HttpServlet {
 
             Autorizacion.exigir(
                     req,
-                    "USUARIOS",
+                    "MENSUALIDADES",
                     "CREAR"
             );
 
-            UUID idEmpresa =
-                    obtenerIdEmpresa(
-                            req
-                    );
-
-            boolean superUsuario =
-                    esSuperUsuario(
-                            req
-                    );
-
-            Usuario obj =
+            MensualidadEmpresa obj =
                     JsonUtil.gson()
                             .fromJson(
                                     req.getReader(),
-                                    Usuario.class
+                                    MensualidadEmpresa.class
                             );
+
+            MensualidadEmpresa creada =
+                    service.crear(obj);
 
             HttpUtil.json(
                     resp,
                     201,
                     ApiResponse.ok(
                             "Registro creado",
-                            service.crear(
-                                    obj,
-                                    idEmpresa,
-                                    superUsuario
-                            )
+                            creada
                     )
             );
 
@@ -266,19 +222,19 @@ public class UsuarioServlet extends HttpServlet {
                     e.getMessage()
             );
 
+        } catch (IllegalArgumentException e) {
+
+            HttpUtil.error(
+                    resp,
+                    400,
+                    e.getMessage()
+            );
+
         } catch (SQLException e) {
 
             HttpUtil.error(
                     resp,
                     SqlErrorUtil.estadoHttp(e),
-                    e.getMessage()
-            );
-
-        } catch (IllegalStateException e) {
-
-            HttpUtil.error(
-                    resp,
-                    500,
                     e.getMessage()
             );
 
@@ -294,7 +250,7 @@ public class UsuarioServlet extends HttpServlet {
     }
 
     // =========================================================
-    // PUT
+    // PUT - EDITAR / REACTIVAR
     // =========================================================
 
     @Override
@@ -305,26 +261,8 @@ public class UsuarioServlet extends HttpServlet {
 
         try {
 
-            Autorizacion.exigir(
-                    req,
-                    "USUARIOS",
-                    "EDITAR"
-            );
-
-            UUID idEmpresa =
-                    obtenerIdEmpresa(
-                            req
-                    );
-
-            boolean superUsuario =
-                    esSuperUsuario(
-                            req
-                    );
-
             String raw =
-                    valorId(
-                            req
-                    );
+                    valorId(req);
 
             if (raw == null) {
 
@@ -338,15 +276,62 @@ public class UsuarioServlet extends HttpServlet {
             }
 
             UUID id =
-                    UUID.fromString(
-                            raw
+                    UUID.fromString(raw);
+
+            String accion =
+                    segundoValor(req);
+
+            // -------------------------------------------------
+            // PUT /api/mensualidades/{id}/reactivar
+            // -------------------------------------------------
+
+            if (accion != null &&
+                    accion.equalsIgnoreCase("reactivar")) {
+
+                Autorizacion.exigir(
+                        req,
+                        "MENSUALIDADES",
+                        "EDITAR"
+                );
+
+                if (!service.reactivar(id)) {
+
+                    HttpUtil.error(
+                            resp,
+                            404,
+                            "Registro no encontrado"
                     );
 
-            Usuario obj =
+                    return;
+                }
+
+                HttpUtil.json(
+                        resp,
+                        200,
+                        ApiResponse.ok(
+                                "Registro reactivado",
+                                null
+                        )
+                );
+
+                return;
+            }
+
+            // -------------------------------------------------
+            // PUT /api/mensualidades/{id}
+            // -------------------------------------------------
+
+            Autorizacion.exigir(
+                    req,
+                    "MENSUALIDADES",
+                    "EDITAR"
+            );
+
+            MensualidadEmpresa obj =
                     JsonUtil.gson()
                             .fromJson(
                                     req.getReader(),
-                                    Usuario.class
+                                    MensualidadEmpresa.class
                             );
 
             if (obj == null) {
@@ -354,21 +339,15 @@ public class UsuarioServlet extends HttpServlet {
                 HttpUtil.error(
                         resp,
                         400,
-                        "Los datos del usuario son obligatorios"
+                        "Los datos de la mensualidad son obligatorios"
                 );
 
                 return;
             }
 
-            obj.setIdUsuario(
-                    id
-            );
+            obj.setIdMensualidad(id);
 
-            if (!service.actualizar(
-                    obj,
-                    idEmpresa,
-                    superUsuario
-            )) {
+            if (!service.actualizar(obj)) {
 
                 HttpUtil.error(
                         resp,
@@ -378,10 +357,6 @@ public class UsuarioServlet extends HttpServlet {
 
                 return;
             }
-
-            obj.setClaveHash(
-                    null
-            );
 
             HttpUtil.json(
                     resp,
@@ -400,19 +375,19 @@ public class UsuarioServlet extends HttpServlet {
                     e.getMessage()
             );
 
+        } catch (IllegalArgumentException e) {
+
+            HttpUtil.error(
+                    resp,
+                    400,
+                    e.getMessage()
+            );
+
         } catch (SQLException e) {
 
             HttpUtil.error(
                     resp,
                     SqlErrorUtil.estadoHttp(e),
-                    e.getMessage()
-            );
-
-        } catch (IllegalStateException e) {
-
-            HttpUtil.error(
-                    resp,
-                    500,
                     e.getMessage()
             );
 
@@ -428,7 +403,7 @@ public class UsuarioServlet extends HttpServlet {
     }
 
     // =========================================================
-    // DELETE
+    // DELETE - SOFT DELETE
     // =========================================================
 
     @Override
@@ -441,24 +416,12 @@ public class UsuarioServlet extends HttpServlet {
 
             Autorizacion.exigir(
                     req,
-                    "USUARIOS",
+                    "MENSUALIDADES",
                     "ELIMINAR"
             );
 
-            UUID idEmpresa =
-                    obtenerIdEmpresa(
-                            req
-                    );
-
-            boolean superUsuario =
-                    esSuperUsuario(
-                            req
-                    );
-
             String raw =
-                    valorId(
-                            req
-                    );
+                    valorId(req);
 
             if (raw == null) {
 
@@ -472,15 +435,9 @@ public class UsuarioServlet extends HttpServlet {
             }
 
             UUID id =
-                    UUID.fromString(
-                            raw
-                    );
+                    UUID.fromString(raw);
 
-            if (!service.eliminar(
-                    id,
-                    idEmpresa,
-                    superUsuario
-            )) {
+            if (!service.eliminar(id)) {
 
                 HttpUtil.error(
                         resp,
@@ -491,8 +448,13 @@ public class UsuarioServlet extends HttpServlet {
                 return;
             }
 
-            resp.setStatus(
-                    HttpServletResponse.SC_NO_CONTENT
+            HttpUtil.json(
+                    resp,
+                    200,
+                    ApiResponse.ok(
+                            "Registro desactivado",
+                            null
+                    )
             );
 
         } catch (SecurityException e) {
@@ -500,6 +462,14 @@ public class UsuarioServlet extends HttpServlet {
             HttpUtil.error(
                     resp,
                     403,
+                    e.getMessage()
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            HttpUtil.error(
+                    resp,
+                    400,
                     e.getMessage()
             );
 
@@ -518,53 +488,11 @@ public class UsuarioServlet extends HttpServlet {
                     500,
                     e.getMessage()
             );
-
-        } catch (Exception e) {
-
-            HttpUtil.error(
-                    resp,
-                    400,
-                    "Identificador inválido"
-            );
         }
     }
 
     // =========================================================
-    // EMPRESA DEL JWT
-    // =========================================================
-
-    private UUID obtenerIdEmpresa(
-            HttpServletRequest req
-    ) {
-
-        return (UUID)
-                req.getAttribute(
-                        "idEmpresa"
-                );
-    }
-
-    // =========================================================
-    // SUPERUSUARIO
-    // =========================================================
-
-    private boolean esSuperUsuario(
-            HttpServletRequest req
-    ) {
-
-        String rol =
-                (String)
-                        req.getAttribute(
-                                "rol"
-                        );
-
-        return rol != null &&
-                rol.equalsIgnoreCase(
-                        "SuperUsuario"
-                );
-    }
-
-    // =========================================================
-    // PRIMER VALOR DEL PATH
+    // UTILIDADES PATH
     // =========================================================
 
     private String valorId(
@@ -593,10 +521,6 @@ public class UsuarioServlet extends HttpServlet {
 
         return partes[0];
     }
-
-    // =========================================================
-    // SEGUNDO VALOR DEL PATH
-    // =========================================================
 
     private String segundoValor(
             HttpServletRequest req

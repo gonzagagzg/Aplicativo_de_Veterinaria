@@ -13,13 +13,13 @@ public final class ConexionBD {
     // =========================================================
 
     private static final String URL =
-            "jdbc:postgresql://localhost:5432/Aplicativo_de_Veterinaria";
+            "jdbc:postgresql://localhost:5432/aplicacion_veterinaria";
 
     private static final String USUARIO =
             "postgres";
 
     private static final String CONTRASENA =
-            "123456789";
+            "Izabela123";
 
     // =========================================================
     // POOL ÚNICO DE CONEXIONES
@@ -31,7 +31,6 @@ public final class ConexionBD {
     // POOL ÚNICO DE CONEXIONES
     // =========================================================
 
-    private static final HikariDataSource DATA_SOURCE;
 
     static {
 
