@@ -117,8 +117,12 @@ CREATE TABLE veterinario (
 CREATE TABLE cliente (
                          id_cliente UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                          id_empresa UUID NOT NULL,
+                         tipo_documento VARCHAR(10) NOT NULL DEFAULT 'CEDULA',
                          identificacion VARCHAR(20) NOT NULL,
                          nombres VARCHAR(150) NOT NULL,
+                         direccion VARCHAR(200),
+                         correo VARCHAR(120),
+                         telefono VARCHAR(20),
                          CONSTRAINT uq_cliente_empresa UNIQUE (id_empresa, identificacion),
                          CONSTRAINT fk_cliente_empresa FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa) ON DELETE RESTRICT
 );
@@ -723,6 +727,14 @@ FROM rol r
                   (p.modulo = 'INVENTARIO' AND p.accion IN ('CREAR', 'EDITAR', 'LISTAR', 'VER'))
                       OR
                   (p.modulo = 'PRODUCTOS' AND p.accion IN ('CREAR', 'EDITAR', 'LISTAR', 'VER'))
+                      OR
+                  (p.modulo = 'CITAS' AND p.accion IN ('LISTAR', 'VER', 'CREAR', 'EDITAR'))
+                      OR
+                  (p.modulo = 'MASCOTAS' AND p.accion IN ('LISTAR', 'VER', 'CREAR', 'EDITAR'))
+                      OR
+                  (p.modulo = 'HISTORIALES' AND p.accion IN ('LISTAR', 'VER'))
+                      OR
+                  (p.modulo = 'USUARIOS' AND p.accion IN ('LISTAR', 'VER'))
                   )
 WHERE r.nombre = 'Farmacéutico'
     ON CONFLICT (id_rol, id_permiso) DO NOTHING;
@@ -833,6 +845,21 @@ VALUES (
            'superadmin',
            '$2a$12$eOkp1DxC8FKMywhrusTjruA6rAeGkMpGkztUEplyZh5bCSgA2MLA6', -- Hash BCrypt de la contraseña inicial
            'Administrador del Sistema Global',
+           TRUE
+       )
+    ON CONFLICT (id_empresa, usuario) DO NOTHING;
+
+-- =========================================================================
+-- CREAR USUARIO DE ROL FARMACÉUTICO
+-- =========================================================================
+INSERT INTO usuario (id_usuario, id_empresa, id_rol, usuario, clave_hash, nombres, activo)
+VALUES (
+           'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b66',
+           'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+           (SELECT id_rol FROM rol WHERE nombre = 'Farmacéutico'),
+           'farma_rocio',
+           '$2a$12$y8Cvy6PssoEjD3ockjHv.Or0Nm9ALRg6UC8QhUbALNi2o0D5GdamO', -- Prueba123!
+           'Rocío Paredes',
            TRUE
        )
     ON CONFLICT (id_empresa, usuario) DO NOTHING;
