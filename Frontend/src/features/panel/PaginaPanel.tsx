@@ -16,17 +16,25 @@ import { useClientesTodos } from '@/features/clientes/api'
 import { Badge, CabeceraPagina, Cargando, Tarjeta } from '@/shared/components/ui'
 import { cn, formatearMoneda, indexarPor } from '@/shared/lib/utils'
 import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
+import { usePermisos } from '@/shared/session/permisos'
 
 export function PaginaPanel() {
   const { idEmpresa, nombreUsuario } = useSesion()
+  const permisos = usePermisos()
 
   const citas = citasApi.useLista()
   const clientes = useClientesTodos()
   const mascotas = mascotasApi.useLista()
   const productos = productosApi.useLista()
   const facturas = facturasApi.useLista()
-  const veterinarios = veterinariosApi.useLista()
-  const usuarios = usuariosApi.useLista()
+  // Solo se cargan si el rol tiene acceso: roles como Farmacéutico no tienen
+  // permiso VETERINARIOS/USUARIOS y el backend respondería 403 en cada visita.
+  const veterinarios = veterinariosApi.useLista({
+    enabled: permisos.puede('VETERINARIOS', 'LISTAR'),
+  })
+  const usuarios = usuariosApi.useLista({
+    enabled: permisos.puede('USUARIOS', 'LISTAR'),
+  })
 
   const porMascota = useMemo(() => indexarPor(mascotas.data, 'idMascota'), [mascotas.data])
   const porUsuario = useMemo(() => indexarPor(usuarios.data, 'idUsuario'), [usuarios.data])

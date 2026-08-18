@@ -16,9 +16,9 @@ import {
 } from '@/shared/components/ui'
 import { clientesApi, empresasApi, mascotasApi } from '@/shared/api/recursos'
 import { useClientesPaginado } from './api'
-import { cedulaEcuatorianaValida } from '@/shared/lib/sri'
+import { cedulaEcuatorianaValida, rucEcuatorianoValido } from '@/shared/lib/sri'
 import { esSuperUsuario, useSesion } from '@/shared/session/sesion'
-import type { Cliente } from '@/shared/types/api'
+import type { Cliente, TipoDocumento } from '@/shared/types/api'
 
 const TAMANIO_PAGINA = 20
 
@@ -260,6 +260,7 @@ function ModalCliente({
   const [identificacion, setIdentificacion] = useState('')
   const [nombres, setNombres] = useState('')
   const [idEmpresa, setIdEmpresa] = useState('')
+  const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>('CEDULA')
 
   // Sincroniza el formulario cada vez que se abre el modal (nuevo o edición).
   useEffect(() => {
@@ -267,6 +268,7 @@ function ModalCliente({
       setIdentificacion(registro?.identificacion ?? '')
       setNombres(registro?.nombres ?? '')
       setIdEmpresa(registro?.idEmpresa ?? '')
+      setTipoDocumento((registro?.tipoDocumento as TipoDocumento | undefined) ?? 'CEDULA')
     }
   }, [abierto, registro])
 
@@ -274,15 +276,23 @@ function ModalCliente({
     setIdentificacion('')
     setNombres('')
     setIdEmpresa('')
+    setTipoDocumento('CEDULA')
     crear.reset()
     actualizar.reset()
     onCerrar()
   }
 
-  const cedulaLimpia = identificacion.replace(/\D/g, '')
-  const cedulaCompleta = cedulaLimpia.length === 10
-  const cedulaValida = cedulaCompleta && cedulaEcuatorianaValida(identificacion)
-  const errorCedula = cedulaCompleta && !cedulaValida ? 'La cédula ecuatoriana no es válida' : undefined
+  const documentoLimpio = identificacion.replace(/\D/g, '')
+  const esRuc = tipoDocumento === 'RUC'
+  const documentoCompleto = esRuc ? documentoLimpio.length === 13 : documentoLimpio.length === 10
+  const documentoValido =
+    documentoCompleto &&
+    (esRuc ? rucEcuatorianoValido(identificacion) : cedulaEcuatorianaValida(identificacion))
+  const errorDocumento = documentoCompleto && !documentoValido
+    ? esRuc
+      ? 'El RUC ecuatoriano no es válido'
+      : 'La cédula ecuatoriana no es válida'
+    : undefined
 
   function enviar(e: FormEvent) {
     e.preventDefault()
@@ -295,13 +305,13 @@ function ModalCliente({
       actualizar.mutate(
         {
           id: registro.idCliente,
-          datos: { identificacion, nombres, idEmpresa: empresaEnviada ?? undefined },
+          datos: { identificacion, nombres, tipoDocumento, idEmpresa: empresaEnviada ?? undefined },
         },
         { onSuccess: cerrarYLimpiar },
       )
     } else {
       crear.mutate(
-        { identificacion, nombres, idEmpresa: empresaEnviada || undefined } as Partial<Cliente>,
+        { identificacion, nombres, tipoDocumento, idEmpresa: empresaEnviada || undefined } as Partial<Cliente>,
         { onSuccess: cerrarYLimpiar },
       )
     }
@@ -332,22 +342,29 @@ function ModalCliente({
           </Campo>
         )}
 
+        <Campo etiqueta="Tipo de documento" requerido>
+          <Select value={tipoDocumento} onChange={(e) => setTipoDocumento(e.target.value as TipoDocumento)}>
+            <option value="CEDULA">Cédula</option>
+            <option value="RUC">RUC</option>
+          </Select>
+        </Campo>
+
         <Campo
-          etiqueta="Cédula"
+          etiqueta={esRuc ? 'RUC' : 'Cédula'}
           requerido
-          ayuda="10 dígitos, cédula ecuatoriana (validación SRI)"
-          error={errorCedula}
+          ayuda={esRuc ? '13 dígitos, RUC ecuatoriano (validación SRI)' : '10 dígitos, cédula ecuatoriana (validación SRI)'}
+          error={errorDocumento}
         >
           <Input
             value={identificacion}
             onChange={(e) => setIdentificacion(e.target.value)}
-            maxLength={10}
+            maxLength={esRuc ? 13 : 10}
             inputMode="numeric"
-            placeholder="1712345678"
+            placeholder={esRuc ? '1790012345001' : '1712345678'}
           />
         </Campo>
 
-        <Campo etiqueta="Nombres completos" requerido>
+        <Campo etiqueta={esRuc ? 'Razón social' : 'Nombres completos'} requerido>
           <Input value={nombres} onChange={(e) => setNombres(e.target.value)} maxLength={150} />
         </Campo>
 
@@ -360,7 +377,7 @@ function ModalCliente({
           <Boton
             type="submit"
             cargando={enviando}
-            disabled={(cedulaCompleta && !cedulaValida) || faltaEmpresa}
+            disabled={(documentoCompleto && !documentoValido) || faltaEmpresa}
           >
             {registro ? 'Guardar cambios' : 'Crear cliente'}
           </Boton>

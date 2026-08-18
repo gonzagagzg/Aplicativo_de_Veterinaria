@@ -145,11 +145,18 @@ export interface Veterinario {
 
 /* ----------------------------------------------------------------- clínica */
 
+export const TIPOS_DOCUMENTO = ['CEDULA', 'RUC'] as const
+export type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number]
+
 export interface Cliente {
   idCliente: Uuid
   idEmpresa: Uuid
+  tipoDocumento: TipoDocumento | string
   identificacion: string
   nombres: string
+  direccion?: string | null
+  correo?: string | null
+  telefono?: string | null
 }
 
 export interface Mascota {
