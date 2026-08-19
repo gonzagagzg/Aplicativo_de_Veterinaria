@@ -125,6 +125,13 @@ export interface Empresa {
   activo: boolean
 }
 
+/** Body de POST /api/empresas — crea la veterinaria y su usuario administrador en una transacción. */
+export interface EmpresaConAdmin extends Empresa {
+  adminUsuario: string
+  adminNombres: string
+  adminContrasena: string
+}
+
 export interface Usuario {
   idUsuario: Uuid
   idEmpresa: Uuid

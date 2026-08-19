@@ -1,6 +1,7 @@
 package com.itq.servlet;
 
 import com.itq.dto.ApiResponse;
+import com.itq.dto.EmpresaConAdminRequest;
 import com.itq.model.Empresa;
 import com.itq.security.Autorizacion;
 import com.itq.service.EmpresaService;
@@ -223,14 +224,14 @@ public class EmpresaServlet extends HttpServlet {
                     "CREAR"
             );
 
-            Empresa obj =
+            EmpresaConAdminRequest request =
                     JsonUtil.gson()
                             .fromJson(
                                     req.getReader(),
-                                    Empresa.class
+                                    EmpresaConAdminRequest.class
                             );
 
-            if (obj == null) {
+            if (request == null) {
 
                 HttpUtil.error(
                         resp,
@@ -241,8 +242,14 @@ public class EmpresaServlet extends HttpServlet {
                 return;
             }
 
+            /*
+             * Alta completa: la empresa y su usuario administrador
+             * se crean juntos en una transacción (crearConAdmin).
+             */
             Empresa creada =
-                    service.crear(obj);
+                    service.crearConAdmin(
+                            request
+                    );
 
             HttpUtil.json(
                     resp,

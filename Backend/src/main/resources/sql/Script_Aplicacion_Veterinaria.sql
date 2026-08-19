@@ -272,12 +272,32 @@ CREATE TABLE movimiento_inventario (
 -- =========================================================================
 -- 8. ÍNDICES DE RENDIMIENTO
 -- =========================================================================
-CREATE INDEX idx_usuario_empresa ON usuario(id_empresa);
-CREATE INDEX idx_cliente_empresa ON cliente(id_empresa);
-CREATE INDEX idx_mascota_empresa ON mascota(id_empresa);
-CREATE INDEX idx_producto_empresa ON producto(id_empresa);
-CREATE INDEX idx_factura_empresa ON factura(id_empresa);
-CREATE INDEX idx_movimiento_producto ON movimiento_inventario(id_producto);
+-- Multiempresa: toda consulta filtra por id_empresa, por eso cada tabla de
+-- negocio tiene su índice. En las tablas que además ordenan por fecha se usa
+-- un índice compuesto (id_empresa, fecha) para evitar un sort extra.
+-- Historial_clinico.id_cita y receta.id_historial ya están indexados por sus
+-- restricciones UNIQUE; no se repiten aquí.
+CREATE INDEX IF NOT EXISTS idx_usuario_empresa ON usuario(id_empresa);
+CREATE INDEX IF NOT EXISTS idx_usuario_rol ON usuario(id_rol);
+CREATE INDEX IF NOT EXISTS idx_cliente_empresa ON cliente(id_empresa);
+CREATE INDEX IF NOT EXISTS idx_mascota_empresa ON mascota(id_empresa);
+CREATE INDEX IF NOT EXISTS idx_mascota_cliente ON mascota(id_cliente);
+CREATE INDEX IF NOT EXISTS idx_mascota_vacuna_mascota ON mascota_vacuna(id_mascota);
+CREATE INDEX IF NOT EXISTS idx_producto_empresa ON producto(id_empresa);
+CREATE INDEX IF NOT EXISTS idx_producto_categoria ON producto(id_categoria);
+CREATE INDEX IF NOT EXISTS idx_producto_iva ON producto(id_iva);
+CREATE INDEX IF NOT EXISTS idx_cita_empresa_fecha ON cita(id_empresa, fecha_hora);
+CREATE INDEX IF NOT EXISTS idx_cita_mascota ON cita(id_mascota);
+CREATE INDEX IF NOT EXISTS idx_cita_veterinario ON cita(id_veterinario);
+CREATE INDEX IF NOT EXISTS idx_historial_empresa ON historial_clinico(id_empresa);
+CREATE INDEX IF NOT EXISTS idx_receta_empresa ON receta(id_empresa);
+CREATE INDEX IF NOT EXISTS idx_receta_detalle_receta ON receta_detalle(id_receta);
+CREATE INDEX IF NOT EXISTS idx_factura_empresa_fecha ON factura(id_empresa, fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_factura_cliente ON factura(id_cliente);
+CREATE INDEX IF NOT EXISTS idx_factura_detalle_factura ON factura_detalle(id_factura);
+CREATE INDEX IF NOT EXISTS idx_movimiento_empresa_fecha ON movimiento_inventario(id_empresa, fecha);
+CREATE INDEX IF NOT EXISTS idx_movimiento_producto ON movimiento_inventario(id_producto);
+CREATE INDEX IF NOT EXISTS idx_veterinario_empresa ON veterinario(id_empresa);
 
 
 -- =========================================================================

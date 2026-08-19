@@ -7,9 +7,12 @@ import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Los catálogos cambian poco; evita refetch agresivo en un ERP interno.
-      staleTime: 30_000,
-      refetchOnWindowFocus: false,
+      // ERP interno: los datos no cambian en milisegundos, pero al volver a
+      // la pestaña o reconectar se refresca para que lo que se ve coincida
+      // con lo que hay en la base (mutationes en otra ventana, etc.).
+      staleTime: 15_000,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
       retry: 1,
     },
   },
