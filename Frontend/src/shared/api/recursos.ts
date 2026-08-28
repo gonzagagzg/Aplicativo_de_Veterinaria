@@ -92,4 +92,14 @@ export const empresaAdminApi = {
       onSuccess: () => qc.invalidateQueries({ queryKey: ['empresas'] }),
     })
   },
+
+  // GET /api/usuarios/empresa/{idEmpresa} (UsuarioServlet) — solo SuperUsuario,
+  // ya que el CRUD genérico de `usuariosApi` filtra siempre por la empresa
+  // del propio token y no sirve para inspeccionar una veterinaria ajena.
+  useUsuariosDeEmpresa: (idEmpresa: Uuid | undefined) =>
+    useQuery<Usuario[]>({
+      queryKey: ['empresas', idEmpresa, 'usuarios'],
+      queryFn: () => api.get<Usuario[]>(`/api/usuarios/empresa/${idEmpresa}`),
+      enabled: !!idEmpresa,
+    }),
 }

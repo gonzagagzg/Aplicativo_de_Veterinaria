@@ -26,6 +26,8 @@ public class EmpresaDAO {
                        ruc,
                        razon_social,
                        direccion,
+                       correo,
+                       telefono,
                        activo
                 FROM empresa
                 ORDER BY razon_social
@@ -66,6 +68,8 @@ public class EmpresaDAO {
                        ruc,
                        razon_social,
                        direccion,
+                       correo,
+                       telefono,
                        activo
                 FROM empresa
                 WHERE id_empresa = ?
@@ -108,9 +112,11 @@ public class EmpresaDAO {
                     ruc,
                     razon_social,
                     direccion,
+                    correo,
+                    telefono,
                     activo
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 RETURNING id_empresa
                 """;
 
@@ -137,8 +143,18 @@ public class EmpresaDAO {
                     obj.getDireccion()
             );
 
-            ps.setBoolean(
+            ps.setString(
                     4,
+                    obj.getCorreo()
+            );
+
+            ps.setString(
+                    5,
+                    obj.getTelefono()
+            );
+
+            ps.setBoolean(
+                    6,
                     obj.isActivo()
             );
 
@@ -177,6 +193,8 @@ public class EmpresaDAO {
                 SET ruc = ?,
                     razon_social = ?,
                     direccion = ?,
+                    correo = ?,
+                    telefono = ?,
                     activo = ?
                 WHERE id_empresa = ?
                 """;
@@ -204,13 +222,23 @@ public class EmpresaDAO {
                     obj.getDireccion()
             );
 
-            ps.setBoolean(
+            ps.setString(
                     4,
+                    obj.getCorreo()
+            );
+
+            ps.setString(
+                    5,
+                    obj.getTelefono()
+            );
+
+            ps.setBoolean(
+                    6,
                     obj.isActivo()
             );
 
             ps.setObject(
-                    5,
+                    7,
                     obj.getIdEmpresa()
             );
 
@@ -287,6 +315,14 @@ public class EmpresaDAO {
                 rs.getString(
                         "direccion"
                 )
+        );
+
+        obj.setCorreo(
+                rs.getString("correo")
+        );
+
+        obj.setTelefono(
+                rs.getString("telefono")
         );
 
         obj.setActivo(

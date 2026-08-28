@@ -1,6 +1,6 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { BarChart3, Building2, Plus, Power, PowerOff } from 'lucide-react'
+import { BarChart3, Building2, Eye, EyeOff, Pencil, Plus, Power, PowerOff, Users } from 'lucide-react'
 import { TablaDatos } from '@/shared/components/TablaDatos'
 import {
   Badge,
@@ -12,9 +12,10 @@ import {
   MensajeError,
   Modal,
 } from '@/shared/components/ui'
-import { empresaAdminApi, empresasApi } from '@/shared/api/recursos'
-import type { Empresa, EmpresaConAdmin, Uuid } from '@/shared/types/api'
+import { empresaAdminApi, empresasApi, rolesApi } from '@/shared/api/recursos'
+import type { Empresa, EmpresaConAdmin, Rol, Uuid } from '@/shared/types/api'
 import { formatearMoneda } from '@/shared/lib/utils'
+import { rucEcuatorianoValido } from '@/shared/lib/sri'
 
 /**
  * Panel exclusivo de SuperUsuario: todas las veterinarias del SaaS,
@@ -30,12 +31,24 @@ export function PaginaEmpresas() {
 
   const [modalNuevaAbierto, setModalNuevaAbierto] = useState(false)
   const [idResumen, setIdResumen] = useState<Uuid | null>(null)
+  const [empresaAEditar, setEmpresaAEditar] = useState<Empresa | null>(null)
+  const [empresaUsuarios, setEmpresaUsuarios] = useState<Empresa | null>(null)
 
   const columnas = useMemo<ColumnDef<Empresa, unknown>[]>(
     () => [
       { accessorKey: 'ruc', header: 'RUC' },
       { accessorKey: 'razonSocial', header: 'Razón social' },
       { accessorKey: 'direccion', header: 'Dirección' },
+      {
+        accessorKey: 'correo',
+        header: 'Correo',
+        cell: ({ getValue }) => (getValue() as string | null) || '—',
+      },
+      {
+        accessorKey: 'telefono',
+        header: 'Teléfono',
+        cell: ({ getValue }) => (getValue() as string | null) || '—',
+      },
       {
         id: 'activo',
         header: 'Estado',
@@ -55,6 +68,22 @@ export function PaginaEmpresas() {
           const enCurso = activar.isPending || desactivar.isPending
           return (
             <div className="flex justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEmpresaAEditar(empresa)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                title="Editar veterinaria"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmpresaUsuarios(empresa)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                title="Ver usuarios"
+              >
+                <Users className="h-4 w-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => setIdResumen(empresa.idEmpresa)}
@@ -125,6 +154,8 @@ export function PaginaEmpresas() {
 
       <ModalNuevaEmpresa abierto={modalNuevaAbierto} onCerrar={() => setModalNuevaAbierto(false)} />
       <ModalResumenEmpresa idEmpresa={idResumen} onCerrar={() => setIdResumen(null)} />
+      <ModalEditarEmpresa empresa={empresaAEditar} onCerrar={() => setEmpresaAEditar(null)} />
+      <ModalUsuariosEmpresa empresa={empresaUsuarios} onCerrar={() => setEmpresaUsuarios(null)} />
     </div>
   )
 }
@@ -134,22 +165,34 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
   const [ruc, setRuc] = useState('')
   const [razonSocial, setRazonSocial] = useState('')
   const [direccion, setDireccion] = useState('')
+  const [correo, setCorreo] = useState('')
+  const [telefono, setTelefono] = useState('')
   const [adminUsuario, setAdminUsuario] = useState('')
   const [adminNombres, setAdminNombres] = useState('')
   const [adminContrasena, setAdminContrasena] = useState('')
   const [confirmarContrasena, setConfirmarContrasena] = useState('')
+  const [mostrarContrasena, setMostrarContrasena] = useState(false)
+  const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
 
   function cerrarYLimpiar() {
     setRuc('')
     setRazonSocial('')
     setDireccion('')
+    setCorreo('')
+    setTelefono('')
     setAdminUsuario('')
     setAdminNombres('')
     setAdminContrasena('')
     setConfirmarContrasena('')
+    setMostrarContrasena(false)
+    setMostrarConfirmar(false)
     crear.reset()
     onCerrar()
   }
+
+  const rucCompleto = ruc.length === 13
+  const rucValido = rucCompleto && rucEcuatorianoValido(ruc)
+  const errorRuc = rucCompleto && !rucValido ? 'El RUC ecuatoriano no es válido' : undefined
 
   const contrasenaCorta = adminContrasena.length > 0 && adminContrasena.length < 6
   const noCoincide =
@@ -163,6 +206,8 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
       ruc,
       razonSocial,
       direccion,
+      correo: correo || undefined,
+      telefono: telefono || undefined,
       activo: true,
       adminUsuario,
       adminNombres,
@@ -178,8 +223,14 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Datos de la veterinaria
           </p>
-          <Campo etiqueta="RUC" requerido ayuda="13 dígitos">
-            <Input value={ruc} onChange={(e) => setRuc(e.target.value)} maxLength={13} required />
+          <Campo etiqueta="RUC" requerido ayuda="13 dígitos, RUC ecuatoriano (validación SRI)" error={errorRuc}>
+            <Input
+              value={ruc}
+              onChange={(e) => setRuc(e.target.value.replace(/\D/g, ''))}
+              maxLength={13}
+              inputMode="numeric"
+              required
+            />
           </Campo>
           <Campo etiqueta="Razón social" requerido>
             <Input
@@ -195,6 +246,24 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
               onChange={(e) => setDireccion(e.target.value)}
               maxLength={255}
               required
+            />
+          </Campo>
+          <Campo etiqueta="Correo">
+            <Input
+              type="email"
+              value={correo}
+              onChange={(e) => setCorreo(e.target.value)}
+              maxLength={100}
+              placeholder="contacto@veterinaria.com"
+            />
+          </Campo>
+          <Campo etiqueta="Teléfono">
+            <Input
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              maxLength={15}
+              inputMode="tel"
+              placeholder="0991234567"
             />
           </Campo>
         </div>
@@ -228,26 +297,50 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
             ayuda="Mínimo 6 caracteres. El backend la cifra con BCrypt."
             error={contrasenaCorta ? 'La contraseña debe tener al menos 6 caracteres' : undefined}
           >
-            <Input
-              type="password"
-              value={adminContrasena}
-              onChange={(e) => setAdminContrasena(e.target.value)}
-              maxLength={255}
-              required
-            />
+            <div className="relative">
+              <Input
+                type={mostrarContrasena ? 'text' : 'password'}
+                value={adminContrasena}
+                onChange={(e) => setAdminContrasena(e.target.value)}
+                maxLength={255}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarContrasena((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                tabIndex={-1}
+                aria-label={mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {mostrarContrasena ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </Campo>
           <Campo
             etiqueta="Confirmar contraseña"
             requerido
             error={noCoincide ? 'Las contraseñas no coinciden' : undefined}
           >
-            <Input
-              type="password"
-              value={confirmarContrasena}
-              onChange={(e) => setConfirmarContrasena(e.target.value)}
-              maxLength={255}
-              required
-            />
+            <div className="relative">
+              <Input
+                type={mostrarConfirmar ? 'text' : 'password'}
+                value={confirmarContrasena}
+                onChange={(e) => setConfirmarContrasena(e.target.value)}
+                maxLength={255}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmar((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                tabIndex={-1}
+                aria-label={mostrarConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {mostrarConfirmar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </Campo>
         </div>
 
@@ -260,12 +353,196 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
           <Boton
             type="submit"
             cargando={crear.isPending}
-            disabled={contrasenaCorta || noCoincide}
+            disabled={contrasenaCorta || noCoincide || (rucCompleto && !rucValido)}
           >
             Crear veterinaria
           </Boton>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+function ModalEditarEmpresa({
+  empresa,
+  onCerrar,
+}: {
+  empresa: Empresa | null
+  onCerrar: () => void
+}) {
+  const actualizar = empresasApi.useActualizar()
+  const [ruc, setRuc] = useState('')
+  const [razonSocial, setRazonSocial] = useState('')
+  const [direccion, setDireccion] = useState('')
+  const [correo, setCorreo] = useState('')
+  const [telefono, setTelefono] = useState('')
+
+  useEffect(() => {
+    if (empresa) {
+      setRuc(empresa.ruc)
+      setRazonSocial(empresa.razonSocial)
+      setDireccion(empresa.direccion)
+      setCorreo(empresa.correo ?? '')
+      setTelefono(empresa.telefono ?? '')
+    }
+  }, [empresa])
+
+  function cerrarYLimpiar() {
+    actualizar.reset()
+    onCerrar()
+  }
+
+  const rucCompleto = ruc.length === 13
+  const rucValido = rucCompleto && rucEcuatorianoValido(ruc)
+  const errorRuc = rucCompleto && !rucValido ? 'El RUC ecuatoriano no es válido' : undefined
+
+  function enviar(e: FormEvent) {
+    e.preventDefault()
+    if (!empresa) return
+    actualizar.mutate(
+      {
+        id: empresa.idEmpresa,
+        datos: {
+          ruc,
+          razonSocial,
+          direccion,
+          correo: correo || undefined,
+          telefono: telefono || undefined,
+        },
+      },
+      { onSuccess: cerrarYLimpiar },
+    )
+  }
+
+  return (
+    <Modal abierto={!!empresa} titulo="Editar veterinaria" onCerrar={cerrarYLimpiar}>
+      <form className="space-y-4" onSubmit={enviar}>
+        <Campo etiqueta="RUC" requerido ayuda="13 dígitos, RUC ecuatoriano (validación SRI)" error={errorRuc}>
+          <Input
+            value={ruc}
+            onChange={(e) => setRuc(e.target.value.replace(/\D/g, ''))}
+            maxLength={13}
+            inputMode="numeric"
+            required
+          />
+        </Campo>
+        <Campo etiqueta="Razón social" requerido>
+          <Input
+            value={razonSocial}
+            onChange={(e) => setRazonSocial(e.target.value)}
+            maxLength={150}
+            required
+          />
+        </Campo>
+        <Campo etiqueta="Dirección" requerido>
+          <Input
+            value={direccion}
+            onChange={(e) => setDireccion(e.target.value)}
+            maxLength={255}
+            required
+          />
+        </Campo>
+        <Campo etiqueta="Correo">
+          <Input
+            type="email"
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
+            maxLength={100}
+            placeholder="contacto@veterinaria.com"
+          />
+        </Campo>
+        <Campo etiqueta="Teléfono">
+          <Input
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            maxLength={15}
+            inputMode="tel"
+            placeholder="0991234567"
+          />
+        </Campo>
+
+        {actualizar.error && <MensajeError error={actualizar.error} />}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Boton type="button" variante="secundario" onClick={cerrarYLimpiar}>
+            Cancelar
+          </Boton>
+          <Boton type="submit" cargando={actualizar.isPending} disabled={rucCompleto && !rucValido}>
+            Guardar cambios
+          </Boton>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function ModalUsuariosEmpresa({
+  empresa,
+  onCerrar,
+}: {
+  empresa: Empresa | null
+  onCerrar: () => void
+}) {
+  const usuarios = empresaAdminApi.useUsuariosDeEmpresa(empresa?.idEmpresa)
+  const roles = rolesApi.useLista()
+
+  const nombreRol = (idRol: number) =>
+    (roles.data ?? []).find((r: Rol) => r.idRol === idRol)?.nombre ?? `Rol #${idRol}`
+
+  return (
+    <Modal
+      abierto={!!empresa}
+      titulo="Usuarios de la veterinaria"
+      descripcion={empresa?.razonSocial}
+      onCerrar={onCerrar}
+    >
+      {usuarios.isLoading ? (
+        <Cargando />
+      ) : usuarios.error ? (
+        <MensajeError error={usuarios.error} />
+      ) : (usuarios.data ?? []).length === 0 ? (
+        <div className="flex items-center gap-2 py-8 text-sm text-slate-400">
+          <Users className="h-4 w-4" />
+          Sin usuarios registrados
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left">
+              <tr>
+                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Usuario
+                </th>
+                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Nombres
+                </th>
+                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Rol
+                </th>
+                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Estado
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {(usuarios.data ?? []).map((u) => (
+                <tr key={u.idUsuario}>
+                  <td className="px-3 py-2 text-slate-700">{u.usuario}</td>
+                  <td className="px-3 py-2 text-slate-700">{u.nombres}</td>
+                  <td className="px-3 py-2 text-slate-700">{nombreRol(u.idRol)}</td>
+                  <td className="px-3 py-2">
+                    {u.activo ? (
+                      <Badge tono="exito">Activo</Badge>
+                    ) : (
+                      <Badge tono="peligro">Inactivo</Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Modal>
   )
 }

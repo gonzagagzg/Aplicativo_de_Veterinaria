@@ -3,7 +3,6 @@ package com.itq.service;
 import com.itq.dao.MascotaVacunaDAO;
 import com.itq.model.MascotaVacuna;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +20,5 @@ public class MascotaVacunaService {
         if (obj.getIdMascota() == null) throw new IllegalArgumentException("La mascota es obligatoria");
         if (obj.getIdVacuna() == null || obj.getIdVacuna() <= 0) throw new IllegalArgumentException("La vacuna es obligatoria");
         if (obj.getFechaAplicacion() == null) throw new IllegalArgumentException("La fecha de aplicación es obligatoria");
-        if (obj.getFechaAplicacion().isAfter(LocalDate.now())) throw new IllegalArgumentException("La fecha de aplicación no puede ser futura");
     }
 }

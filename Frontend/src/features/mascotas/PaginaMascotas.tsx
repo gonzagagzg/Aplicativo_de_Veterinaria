@@ -86,7 +86,7 @@ export function PaginaMascotas() {
             etiqueta: `${porEspecie.get(String(r.idEspecie))?.nombre ?? '?'} · ${r.nombre}`,
           })),
         },
-        { nombre: 'fechaNacimiento', etiqueta: 'Fecha de nacimiento', tipo: 'fecha' },
+        { nombre: 'fechaNacimiento', etiqueta: 'Fecha de nacimiento', tipo: 'fecha', maxHoy: true },
       ]}
     />
   )

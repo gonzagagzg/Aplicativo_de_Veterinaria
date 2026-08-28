@@ -14,11 +14,17 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public class EmpresaService {
 
     private final EmpresaDAO dao =
             new EmpresaDAO();
+
+    private static final Pattern PATRON_CORREO =
+            Pattern.compile(
+                    "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$"
+            );
 
     // =========================================================
     // LISTAR
@@ -112,6 +118,14 @@ public class EmpresaService {
 
         empresa.setDireccion(
                 request.getDireccion()
+        );
+
+        empresa.setCorreo(
+                request.getCorreo()
+        );
+
+        empresa.setTelefono(
+                request.getTelefono()
         );
 
         empresa.setActivo(
@@ -388,6 +402,60 @@ public class EmpresaService {
                 obj.getDireccion()
                         .trim()
         );
+
+        // -----------------------------------------------------
+        // CORREO (opcional)
+        // -----------------------------------------------------
+
+        if (!vacio(
+                obj.getCorreo()
+        )) {
+
+            String correo =
+                    obj.getCorreo()
+                            .trim()
+                            .toLowerCase();
+
+            if (!PATRON_CORREO
+                    .matcher(correo)
+                    .matches()) {
+
+                throw new IllegalArgumentException(
+                        "El correo electrónico no es válido"
+                );
+            }
+
+            obj.setCorreo(
+                    correo
+            );
+        }
+
+        // -----------------------------------------------------
+        // TELÉFONO (opcional)
+        // -----------------------------------------------------
+
+        if (!vacio(
+                obj.getTelefono()
+        )) {
+
+            String telefono =
+                    EcuadorValidator.limpiarNumero(
+                            obj.getTelefono()
+                    );
+
+            if (telefono == null ||
+                    telefono.length() < 7 ||
+                    telefono.length() > 15) {
+
+                throw new IllegalArgumentException(
+                        "El teléfono no es válido"
+                );
+            }
+
+            obj.setTelefono(
+                    telefono
+            );
+        }
     }
 
     // =========================================================
@@ -450,9 +518,11 @@ public class EmpresaService {
                     ruc,
                     razon_social,
                     direccion,
+                    correo,
+                    telefono,
                     activo
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 RETURNING id_empresa
                 """;
 
@@ -474,8 +544,18 @@ public class EmpresaService {
                     empresa.getDireccion()
             );
 
-            ps.setBoolean(
+            ps.setString(
                     4,
+                    empresa.getCorreo()
+            );
+
+            ps.setString(
+                    5,
+                    empresa.getTelefono()
+            );
+
+            ps.setBoolean(
+                    6,
                     empresa.isActivo()
             );
 

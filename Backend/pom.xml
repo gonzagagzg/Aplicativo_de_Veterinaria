@@ -15,7 +15,7 @@
     <packaging>war</packaging>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -91,7 +91,7 @@
         <plugins>
 
             <!-- ================================================= -->
-            <!-- Compilador Java 17                               -->
+            <!-- Compilador Java 25                               -->
             <!-- ================================================= -->
 
             <plugin>
@@ -100,7 +100,7 @@
                 <version>3.13.0</version>
 
                 <configuration>
-                    <release>17</release>
+                    <release>25</release>
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>

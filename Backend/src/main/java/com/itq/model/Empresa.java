@@ -7,6 +7,8 @@ public class Empresa {
     private String ruc;
     private String razonSocial;
     private String direccion;
+    private String correo;
+    private String telefono;
     private Boolean activo;
 
     public Empresa() {}
@@ -19,6 +21,10 @@ public class Empresa {
     public void setRazonSocial(String razonSocial) { this.razonSocial = razonSocial; }
     public String getDireccion() { return direccion; }
     public void setDireccion(String direccion) { this.direccion = direccion; }
+    public String getCorreo() { return correo; }
+    public void setCorreo(String correo) { this.correo = correo; }
+    public String getTelefono() { return telefono; }
+    public void setTelefono(String telefono) { this.telefono = telefono; }
     public Boolean isActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }
 }

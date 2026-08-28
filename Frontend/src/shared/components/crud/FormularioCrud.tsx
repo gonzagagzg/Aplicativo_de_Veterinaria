@@ -36,6 +36,8 @@ export function FormularioCrud<T extends object>({
     formState: { errors },
   } = useForm<Record<string, unknown>>()
 
+  const hoyISO = new Date().toISOString().slice(0, 10)
+
   // Al abrir el modal (crear o editar) se rehidrata el formulario.
   useEffect(() => {
     const valores: Record<string, unknown> = {}
@@ -108,7 +110,9 @@ export function FormularioCrud<T extends object>({
             max:
               campo.max !== undefined
                 ? { value: campo.max, message: `El valor máximo es ${campo.max}` }
-                : undefined,
+                : campo.maxHoy
+                  ? { value: hoyISO, message: 'La fecha no puede ser futura' }
+                  : undefined,
           }
 
           return (
@@ -154,6 +158,7 @@ export function FormularioCrud<T extends object>({
                             : 'text'
                     }
                     step={campo.tipo === 'decimal' ? '0.01' : undefined}
+                    max={campo.tipo === 'fecha' && campo.maxHoy ? hoyISO : undefined}
                     disabled={bloqueado}
                     placeholder={campo.placeholder}
                     {...register(campo.nombre, reglas)}

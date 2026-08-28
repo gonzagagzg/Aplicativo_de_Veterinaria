@@ -55,6 +55,21 @@ export function PaginaClientes() {
       { accessorKey: 'identificacion', header: 'Identificación' },
       { accessorKey: 'nombres', header: 'Nombres' },
       {
+        accessorKey: 'direccion',
+        header: 'Dirección',
+        cell: ({ getValue }) => (getValue() as string | null) || '—',
+      },
+      {
+        accessorKey: 'correo',
+        header: 'Correo',
+        cell: ({ getValue }) => (getValue() as string | null) || '—',
+      },
+      {
+        accessorKey: 'telefono',
+        header: 'Teléfono',
+        cell: ({ getValue }) => (getValue() as string | null) || '—',
+      },
+      {
         id: 'mascotas',
         header: 'Mascotas',
         cell: ({ row }) => {
@@ -261,6 +276,9 @@ function ModalCliente({
   const [nombres, setNombres] = useState('')
   const [idEmpresa, setIdEmpresa] = useState('')
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>('CEDULA')
+  const [direccion, setDireccion] = useState('')
+  const [correo, setCorreo] = useState('')
+  const [telefono, setTelefono] = useState('')
 
   // Sincroniza el formulario cada vez que se abre el modal (nuevo o edición).
   useEffect(() => {
@@ -269,6 +287,9 @@ function ModalCliente({
       setNombres(registro?.nombres ?? '')
       setIdEmpresa(registro?.idEmpresa ?? '')
       setTipoDocumento((registro?.tipoDocumento as TipoDocumento | undefined) ?? 'CEDULA')
+      setDireccion(registro?.direccion ?? '')
+      setCorreo(registro?.correo ?? '')
+      setTelefono(registro?.telefono ?? '')
     }
   }, [abierto, registro])
 
@@ -277,6 +298,9 @@ function ModalCliente({
     setNombres('')
     setIdEmpresa('')
     setTipoDocumento('CEDULA')
+    setDireccion('')
+    setCorreo('')
+    setTelefono('')
     crear.reset()
     actualizar.reset()
     onCerrar()
@@ -305,13 +329,29 @@ function ModalCliente({
       actualizar.mutate(
         {
           id: registro.idCliente,
-          datos: { identificacion, nombres, tipoDocumento, idEmpresa: empresaEnviada ?? undefined },
+          datos: {
+            identificacion,
+            nombres,
+            tipoDocumento,
+            idEmpresa: empresaEnviada ?? undefined,
+            direccion: direccion || undefined,
+            correo: correo || undefined,
+            telefono: telefono || undefined,
+          },
         },
         { onSuccess: cerrarYLimpiar },
       )
     } else {
       crear.mutate(
-        { identificacion, nombres, tipoDocumento, idEmpresa: empresaEnviada || undefined } as Partial<Cliente>,
+        {
+          identificacion,
+          nombres,
+          tipoDocumento,
+          idEmpresa: empresaEnviada || undefined,
+          direccion: direccion || undefined,
+          correo: correo || undefined,
+          telefono: telefono || undefined,
+        } as Partial<Cliente>,
         { onSuccess: cerrarYLimpiar },
       )
     }
@@ -366,6 +406,30 @@ function ModalCliente({
 
         <Campo etiqueta={esRuc ? 'Razón social' : 'Nombres completos'} requerido>
           <Input value={nombres} onChange={(e) => setNombres(e.target.value)} maxLength={150} />
+        </Campo>
+
+        <Campo etiqueta="Dirección">
+          <Input value={direccion} onChange={(e) => setDireccion(e.target.value)} maxLength={200} />
+        </Campo>
+
+        <Campo etiqueta="Correo">
+          <Input
+            type="email"
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
+            maxLength={100}
+            placeholder="correo@ejemplo.com"
+          />
+        </Campo>
+
+        <Campo etiqueta="Teléfono">
+          <Input
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            maxLength={15}
+            inputMode="tel"
+            placeholder="0991234567"
+          />
         </Campo>
 
         {error && <MensajeError error={error} />}

@@ -122,6 +122,8 @@ export interface Empresa {
   ruc: string
   razonSocial: string
   direccion: string
+  correo?: string | null
+  telefono?: string | null
   activo: boolean
 }
 

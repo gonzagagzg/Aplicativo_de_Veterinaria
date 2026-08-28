@@ -85,6 +85,8 @@ CREATE TABLE empresa (
                          ruc VARCHAR(13) NOT NULL UNIQUE,
                          razon_social VARCHAR(150) NOT NULL,
                          direccion VARCHAR(255) NOT NULL,
+                         correo VARCHAR(100),
+                         telefono VARCHAR(15),
                          activo BOOLEAN DEFAULT TRUE NOT NULL
 );
 
@@ -789,7 +791,8 @@ SELECT modulo, accion FROM (VALUES
     ('USUARIOS','LISTAR'),   ('USUARIOS','VER'),   ('USUARIOS','CREAR'),   ('USUARIOS','EDITAR'),   ('USUARIOS','ELIMINAR'),
     ('VETERINARIOS','LISTAR'),('VETERINARIOS','VER'),('VETERINARIOS','CREAR'),('VETERINARIOS','EDITAR'),('VETERINARIOS','ELIMINAR'),
     ('FACTURAS','LISTAR'),   ('FACTURAS','VER'),   ('FACTURAS','CREAR'),   ('FACTURAS','EDITAR'),   ('FACTURAS','ELIMINAR'), ('FACTURAS','EMITIR'),
-    ('EMPRESAS','LISTAR'),   ('EMPRESAS','VER'),   ('EMPRESAS','CREAR'),   ('EMPRESAS','EDITAR'),   ('EMPRESAS','ACTIVAR'), ('EMPRESAS','DESACTIVAR')
+    ('EMPRESAS','LISTAR'),   ('EMPRESAS','VER'),   ('EMPRESAS','CREAR'),   ('EMPRESAS','EDITAR'),   ('EMPRESAS','ACTIVAR'), ('EMPRESAS','DESACTIVAR'),
+    ('RECETAS','LISTAR'),    ('RECETAS','VER'),    ('RECETAS','CREAR'),    ('RECETAS','EDITAR'),    ('RECETAS','ELIMINAR')
 ) AS catalogo(modulo, accion)
 ON CONFLICT (modulo, accion) DO NOTHING;
 
@@ -806,7 +809,7 @@ SELECT r.id_rol, p.id_permiso
 FROM rol r
          JOIN permiso p ON p.modulo IN (
     'CATEGORIAS','CITAS','CLIENTES','HISTORIALES','MASCOTAS',
-    'INVENTARIO','PRODUCTOS','USUARIOS','VETERINARIOS','FACTURAS'
+    'INVENTARIO','PRODUCTOS','USUARIOS','VETERINARIOS','FACTURAS','RECETAS'
 )
 WHERE r.nombre IN ('Administrador Global', 'Administrador Local')
     ON CONFLICT (id_rol, id_permiso) DO NOTHING;
@@ -814,9 +817,9 @@ WHERE r.nombre IN ('Administrador Global', 'Administrador Local')
 -- =========================================================================
 -- ASIGNAR PERMISOS A VETERINARIO
 -- =========================================================================
--- Atención clínica: agenda propia, historiales y recetas (sin permiso
--- dedicado, ver nota abajo), consulta de clientes/mascotas y de stock de
--- productos para prescribir — sin gestionar usuarios, empresas ni facturación.
+-- Atención clínica: agenda propia, historiales y recetas, consulta de
+-- clientes/mascotas y de stock de productos para prescribir — sin gestionar
+-- usuarios, empresas ni facturación.
 
 INSERT INTO rol_permiso (id_rol, id_permiso)
 SELECT r.id_rol, p.id_permiso
@@ -824,6 +827,7 @@ FROM rol r
          JOIN permiso p ON (
         (p.modulo = 'CITAS' AND p.accion IN ('LISTAR','VER','CREAR','EDITAR'))
         OR (p.modulo = 'HISTORIALES' AND p.accion IN ('LISTAR','VER','CREAR','EDITAR'))
+        OR (p.modulo = 'RECETAS' AND p.accion IN ('LISTAR','VER','CREAR','EDITAR'))
         OR (p.modulo = 'MASCOTAS' AND p.accion IN ('LISTAR','VER','EDITAR'))
         OR (p.modulo = 'CLIENTES' AND p.accion IN ('LISTAR','VER'))
         OR (p.modulo = 'PRODUCTOS' AND p.accion IN ('LISTAR','VER'))

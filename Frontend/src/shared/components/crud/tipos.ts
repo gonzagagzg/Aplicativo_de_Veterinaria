@@ -32,6 +32,8 @@ export interface CampoFormulario<T> {
   maxLength?: number
   min?: number
   max?: number
+  /** Solo para `tipo: 'fecha'`: no permite elegir una fecha posterior a hoy (ej. fecha de nacimiento). */
+  maxHoy?: boolean
   /** Ocupa las dos columnas de la rejilla. */
   anchoCompleto?: boolean
 }

@@ -18,8 +18,11 @@ public class RecetaService {
         if (obj == null) throw new IllegalArgumentException("Los datos de la receta son obligatorios");
         if (obj.getIdEmpresa() == null) throw new IllegalArgumentException("La empresa es obligatoria");
         if (obj.getIdHistorial() == null) throw new IllegalArgumentException("El historial clínico es obligatorio");
-        if (vacio(obj.getIndicacionesGenerales())) throw new IllegalArgumentException("Las indicaciones generales son obligatorias");
-        obj.setIndicacionesGenerales(obj.getIndicacionesGenerales().trim());
+        // Las indicaciones son opcionales: la receta se emite primero (vacía) y
+        // se completa desde la consulta al agregar líneas de medicamento.
+        if (!vacio(obj.getIndicacionesGenerales())) {
+            obj.setIndicacionesGenerales(obj.getIndicacionesGenerales().trim());
+        }
     }
     private boolean vacio(String valor) { return valor == null || valor.trim().isEmpty(); }
 }
