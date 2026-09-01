@@ -51,6 +51,8 @@ public final class ConexionBD {
                     USUARIO
             );
 
+            
+
             config.setPassword(
                     CONTRASENA
             );
