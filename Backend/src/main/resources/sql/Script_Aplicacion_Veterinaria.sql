@@ -506,70 +506,70 @@ ORDER BY table_name;
 -- =========================================================================
 
 -- 1. SRI_IVA
-SELECT id_iva, porcentaje, codigo_sri FROM sri_iva;
+SELECT * FROM sri_iva;
 
 -- 2. ESPECIE
-SELECT id_especie, nombre FROM especie;
+SELECT * FROM especie;
 
 -- 3. RAZA
-SELECT id_raza, id_especie, nombre FROM raza;
+SELECT * FROM raza;
 
 -- 4. VACUNA
-SELECT id_vacuna, nombre FROM vacuna;
+SELECT * FROM vacuna;
 
 -- 5. ROL
-SELECT id_rol, nombre FROM rol;
+SELECT * FROM rol;
 
 -- 6. PERMISO
-SELECT id_permiso, modulo, accion FROM permiso;
+SELECT * FROM permiso;
 
 -- 7. ROL_PERMISO
-SELECT id_rol, id_permiso FROM rol_permiso;
+SELECT * FROM rol_permiso;
 
 -- 8. EMPRESA
-SELECT id_empresa, ruc, razon_social, direccion, activo FROM empresa;
+SELECT * FROM empresa;
 
 -- 9. USUARIO
-SELECT id_usuario, id_empresa, id_rol, usuario, clave_hash, nombres, activo FROM usuario;
+SELECT * FROM usuario;
 
 -- 10. VETERINARIO
-SELECT id_veterinario, id_usuario, id_empresa, especialidad FROM veterinario;
+SELECT * FROM veterinario;
 
 -- 11. CLIENTE
-SELECT id_cliente, id_empresa, identificacion, nombres FROM cliente;
+SELECT * FROM cliente;
 
 -- 12. MASCOTA
-SELECT id_mascota, id_empresa, id_cliente, id_raza, nombre, fecha_nacimiento FROM mascota;
+SELECT * FROM mascota;
 
 -- 13. MASCOTA_VACUNA
-SELECT id_mascota_vacuna, id_empresa, id_mascota, id_vacuna, fecha_aplicacion FROM mascota_vacuna;
+SELECT * FROM mascota_vacuna;
 
 -- 14. CITA
-SELECT id_cita, id_empresa, id_mascota, id_veterinario, fecha_hora, estado FROM cita;
+SELECT * FROM cita;
 
 -- 15. HISTORIAL_CLINICO
-SELECT id_historial, id_empresa, id_cita, peso_kg, temperatura_c, anamnesis, diagnostico FROM historial_clinico;
+SELECT * FROM historial_clinico;
 
 -- 16. RECETA
-SELECT id_receta, id_empresa, id_historial, indicaciones_generales FROM receta;
+SELECT * FROM receta;
 
 -- 17. RECETA_DETALLE
-SELECT id_detalle_receta, id_receta, id_producto, dosis, frecuencia, duracion_dias FROM receta_detalle;
+SELECT * FROM receta_detalle;
 
 -- 18. CATEGORIA
-SELECT id_categoria, id_empresa, nombre FROM categoria;
+SELECT * FROM categoria;
 
 -- 19. PRODUCTO
-SELECT id_producto, id_empresa, id_categoria, id_iva, nombre, precio_unitario, stock_actual, stock_minimo, fecha_caducidad FROM producto;
+SELECT * FROM producto;
 
 -- 20. FACTURA
-SELECT id_factura, id_empresa, id_cliente, id_usuario, total, estado, fecha FROM factura;
+SELECT * FROM factura;
 
 -- 21. FACTURA_DETALLE
-SELECT id_detalle, id_factura, id_producto, id_iva, cantidad, precio_unitario, subtotal FROM factura_detalle;
+SELECT * FROM factura_detalle;
 
 -- 22. MOVIMIENTO_INVENTARIO
-SELECT id_movimiento, id_empresa, id_producto, id_factura, tipo, cantidad, fecha FROM movimiento_inventario;
+SELECT * FROM movimiento_inventario;
 
 
 -- =========================================================================
