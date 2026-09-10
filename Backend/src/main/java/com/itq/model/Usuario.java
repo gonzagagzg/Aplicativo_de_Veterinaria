@@ -10,6 +10,8 @@ public class Usuario {
     private String claveHash;
     private String nombres;
     private Boolean activo;
+    private String tipobloqueo;
+    private String notificacion;
 
     public Usuario() {}
 
@@ -27,4 +29,8 @@ public class Usuario {
     public void setNombres(String nombres) { this.nombres = nombres; }
     public Boolean isActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }
+    public String getTipobloqueo() { return tipobloqueo; }
+    public void setTipobloqueo(String tipobloqueo) { this.tipobloqueo = tipobloqueo; }
+    public String getNotificacion() { return notificacion; }
+    public void setNotificacion(String notificacion) { this.notificacion = notificacion; }
 }

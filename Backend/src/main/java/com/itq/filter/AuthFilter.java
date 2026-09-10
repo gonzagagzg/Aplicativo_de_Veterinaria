@@ -54,7 +54,8 @@ public class AuthFilter implements Filter {
         // LOGIN PÚBLICO
         // =====================================================
 
-        if (path.equals("/api/auth/login")) {
+        if (path.equals("/api/auth/login") ||
+                path.equals("/api/auth/notificar-bloqueo")) {
 
             chain.doFilter(
                     request,

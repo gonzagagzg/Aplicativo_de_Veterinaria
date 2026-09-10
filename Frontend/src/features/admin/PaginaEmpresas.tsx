@@ -12,8 +12,8 @@ import {
   MensajeError,
   Modal,
 } from '@/shared/components/ui'
-import { empresaAdminApi, empresasApi, rolesApi } from '@/shared/api/recursos'
-import type { Empresa, EmpresaConAdmin, Rol, Uuid } from '@/shared/types/api'
+import { empresaAdminApi, empresasApi, rolesApi, usuarioAdminApi } from '@/shared/api/recursos'
+import type { Empresa, EmpresaConAdmin, Rol, Uuid, Usuario } from '@/shared/types/api'
 import { formatearMoneda } from '@/shared/lib/utils'
 import { rucEcuatorianoValido } from '@/shared/lib/sri'
 
@@ -485,64 +485,204 @@ function ModalUsuariosEmpresa({
 }) {
   const usuarios = empresaAdminApi.useUsuariosDeEmpresa(empresa?.idEmpresa)
   const roles = rolesApi.useLista()
+  const desbloquear = usuarioAdminApi.useDesbloquear()
+  const [usuarioBloqueando, setUsuarioBloqueando] = useState<Usuario | null>(null)
 
   const nombreRol = (idRol: number) =>
     (roles.data ?? []).find((r: Rol) => r.idRol === idRol)?.nombre ?? `Rol #${idRol}`
 
   return (
-    <Modal
-      abierto={!!empresa}
-      titulo="Usuarios de la veterinaria"
-      descripcion={empresa?.razonSocial}
-      onCerrar={onCerrar}
-    >
-      {usuarios.isLoading ? (
-        <Cargando />
-      ) : usuarios.error ? (
-        <MensajeError error={usuarios.error} />
-      ) : (usuarios.data ?? []).length === 0 ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-slate-400">
-          <Users className="h-4 w-4" />
-          Sin usuarios registrados
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left">
-              <tr>
-                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Usuario
-                </th>
-                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Nombres
-                </th>
-                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Rol
-                </th>
-                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Estado
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(usuarios.data ?? []).map((u) => (
-                <tr key={u.idUsuario}>
-                  <td className="px-3 py-2 text-slate-700">{u.usuario}</td>
-                  <td className="px-3 py-2 text-slate-700">{u.nombres}</td>
-                  <td className="px-3 py-2 text-slate-700">{nombreRol(u.idRol)}</td>
-                  <td className="px-3 py-2">
-                    {u.activo ? (
-                      <Badge tono="exito">Activo</Badge>
-                    ) : (
-                      <Badge tono="peligro">Inactivo</Badge>
-                    )}
-                  </td>
+    <>
+      <Modal
+        abierto={!!empresa}
+        titulo="Usuarios de la veterinaria"
+        descripcion={empresa?.razonSocial}
+        onCerrar={onCerrar}
+        ancho="max-w-4xl"
+      >
+        {usuarios.isLoading ? (
+          <Cargando />
+        ) : usuarios.error ? (
+          <MensajeError error={usuarios.error} />
+        ) : (usuarios.data ?? []).length === 0 ? (
+          <div className="flex items-center gap-2 py-8 text-sm text-slate-400">
+            <Users className="h-4 w-4" />
+            Sin usuarios registrados
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left">
+                <tr>
+                  <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Usuario
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Nombres
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Rol
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Estado
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Acciones
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Notificación
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(usuarios.data ?? []).map((u) => (
+                  <tr
+                    key={u.idUsuario}
+                    className={
+                      u.notificacion === 'pago'
+                        ? 'bg-red-50'
+                        : u.notificacion === 'tecnico'
+                          ? 'bg-amber-50'
+                          : ''
+                    }
+                  >
+                    <td className="px-3 py-2 text-slate-700">{u.usuario}</td>
+                    <td className="px-3 py-2 text-slate-700">{u.nombres}</td>
+                    <td className="px-3 py-2 text-slate-700">{nombreRol(u.idRol)}</td>
+                    <td className="px-3 py-2">
+                      {EstadoUsuario({ usuario: u })}
+                    </td>
+                    <td className="flex justify-center px-3 py-2">
+                      {u.activo ? (
+                        <button
+                          type="button"
+                          onClick={() => setUsuarioBloqueando(u)}
+                          className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          title="Bloquear usuario"
+                        >
+                          <PowerOff className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={desbloquear.isPending}
+                          onClick={() => desbloquear.mutate(u.idUsuario)}
+                          className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40"
+                          title="Desbloquear (pone activo=true y tipobloqueo=null)"
+                        >
+                          <Power className="h-4 w-4" />
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {NotificacionUsuario({ usuario: u })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
+
+      <ModalBloqueoUsuario usuario={usuarioBloqueando} onCerrar={() => setUsuarioBloqueando(null)} />
+    </>
+  )
+}
+
+function NotificacionUsuario({ usuario }: { usuario: Usuario }) {
+  if (usuario.notificacion === 'pago') return 'Pago'
+  if (usuario.notificacion === 'tecnico') return 'Técnico'
+  return 'Ninguna'
+}
+
+function EstadoUsuario({ usuario }: { usuario: Usuario }) {
+  if (usuario.activo) return <Badge tono="exito">Activo</Badge>
+  if (usuario.tipobloqueo === 'pago') return <Badge tono="peligro">Bloqueado Pago</Badge>
+  if (usuario.tipobloqueo === 'tecnico') return <Badge tono="alerta">Bloqueado Técnico</Badge>
+  return <Badge tono="peligro">Inactivo</Badge>
+}
+
+function ModalBloqueoUsuario({
+  usuario,
+  onCerrar,
+}: {
+  usuario: Usuario | null
+  onCerrar: () => void
+}) {
+  const bloquear = usuarioAdminApi.useBloquear()
+  const [tipo, setTipo] = useState<'pago' | 'tecnico'>('pago')
+
+  function cerrarYLimpiar() {
+    setTipo('pago')
+    bloquear.reset()
+    onCerrar()
+  }
+
+  return (
+    <Modal
+      abierto={!!usuario}
+      titulo="Tipo de desactivación"
+      descripcion={usuario ? `Se bloqueará el usuario "${usuario.usuario}"` : undefined}
+      onCerrar={cerrarYLimpiar}
+    >
+      <div className="space-y-3">
+        <p className="text-sm text-slate-600">Seleccione el motivo del bloqueo:</p>
+        {(
+          [
+            { valor: 'pago', etiqueta: 'Por falta de pago', descripcion: 'El usuario no ha regularizado el pago' },
+            { valor: 'tecnico', etiqueta: 'Técnico', descripcion: 'Bloqueo por motivos técnicos del sistema' },
+          ] as const
+        ).map(({ valor, etiqueta, descripcion }) => (
+          <label
+            key={valor}
+            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+              tipo === valor
+                ? 'border-brand-600 bg-brand-50'
+                : 'border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <input
+              type="radio"
+              name="tipoBloqueo"
+              value={valor}
+              checked={tipo === valor}
+              onChange={() => setTipo(valor)}
+              className="mt-0.5 accent-brand-600"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-slate-800">{etiqueta}</span>
+              <span className="block text-xs text-slate-500">{descripcion}</span>
+            </span>
+          </label>
+        ))}
+
+        {bloquear.error && (
+          <div className="mt-3">
+            <MensajeError error={bloquear.error} />
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Boton type="button" variante="secundario" onClick={cerrarYLimpiar}>
+            Cancelar
+          </Boton>
+          <Boton
+            type="button"
+            variante="peligro"
+            cargando={bloquear.isPending}
+            disabled={!usuario}
+            onClick={() =>
+              usuario &&
+              bloquear.mutate({ idUsuario: usuario.idUsuario, tipoBloqueo: tipo }, {
+                onSuccess: cerrarYLimpiar,
+              })
+            }
+          >
+            Bloquear usuario
+          </Boton>
         </div>
-      )}
+      </div>
     </Modal>
   )
 }

@@ -27,6 +27,12 @@ public class UsuarioService {
     private static final Set<Integer> ROLES_EMPLEADOS =
             Set.of(3, 4, 5, 7);
 
+    /*
+     * Tipos válidos de bloqueo de usuario.
+     */
+    private static final Set<String> TIPOS_BLOQUEO =
+            Set.of("pago", "tecnico");
+
     // =========================================================
     // LISTAR
     // =========================================================
@@ -351,6 +357,77 @@ public class UsuarioService {
         return dao.eliminarPorEmpresa(
                 idUsuario,
                 idEmpresa
+        );
+    }
+
+    // =========================================================
+    // BLOQUEAR
+    // =========================================================
+
+    public boolean bloquear(
+            UUID idUsuario,
+            String tipoBloqueo,
+            UUID idEmpresa,
+            boolean superUsuario
+    ) throws SQLException {
+
+        if (!superUsuario) {
+
+            throw new SecurityException(
+                    "Solo un SuperUsuario puede bloquear usuarios"
+            );
+        }
+
+        if (idUsuario == null) {
+
+            throw new IllegalArgumentException(
+                    "El usuario es obligatorio"
+            );
+        }
+
+        if (tipoBloqueo == null ||
+                !TIPOS_BLOQUEO.contains(tipoBloqueo)) {
+
+            throw new IllegalArgumentException(
+                    "El tipo de bloqueo debe ser 'pago' o 'tecnico'"
+            );
+        }
+
+        return dao.actualizarBloqueo(
+                idUsuario,
+                false,
+                tipoBloqueo
+        );
+    }
+
+    // =========================================================
+    // DESBLOQUEAR
+    // =========================================================
+
+    public boolean desbloquear(
+            UUID idUsuario,
+            UUID idEmpresa,
+            boolean superUsuario
+    ) throws SQLException {
+
+        if (!superUsuario) {
+
+            throw new SecurityException(
+                    "Solo un SuperUsuario puede desbloquear usuarios"
+            );
+        }
+
+        if (idUsuario == null) {
+
+            throw new IllegalArgumentException(
+                    "El usuario es obligatorio"
+            );
+        }
+
+        return dao.actualizarBloqueo(
+                idUsuario,
+                true,
+                null
         );
     }
 

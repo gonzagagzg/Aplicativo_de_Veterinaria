@@ -102,6 +102,8 @@ CREATE TABLE usuario (
                          clave_hash VARCHAR(255) NOT NULL,
                          nombres VARCHAR(100) NOT NULL,
                          activo BOOLEAN DEFAULT TRUE NOT NULL,
+                         tipobloqueo VARCHAR(10) CHECK (tipobloqueo IN ('pago', 'tecnico')) DEFAULT NULL,
+                         notificacion VARCHAR(10) CHECK (notificacion IN ('pago', 'tecnico')) DEFAULT NULL,
                          CONSTRAINT uq_usuario_global UNIQUE (usuario), -- El usuario es único en todo el sistema
                          CONSTRAINT fk_usuario_empresa FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa) ON DELETE RESTRICT,
                          CONSTRAINT fk_usuario_rol FOREIGN KEY (id_rol) REFERENCES rol(id_rol) ON DELETE RESTRICT
@@ -1005,4 +1007,18 @@ FROM permiso
 GROUP BY LOWER(modulo), LOWER(accion)
 HAVING COUNT(*) > 1
 ORDER BY LOWER(modulo), LOWER(accion);
+
+-- =========================================================================
+-- MIGRACIONES
+-- =========================================================================
+
+-- Agregar columna tipobloqueo a la tabla usuario (nullable, opciones: 'pago', 'tecnico')
+ALTER TABLE usuario
+    ADD COLUMN IF NOT EXISTS tipobloqueo VARCHAR(10)
+    CHECK (tipobloqueo IN ('pago', 'tecnico'));
+
+-- Agregar columna notificacion a la tabla usuario (nullable, opciones: 'pago', 'tecnico')
+ALTER TABLE usuario
+    ADD COLUMN IF NOT EXISTS notificacion VARCHAR(10)
+    CHECK (notificacion IN ('pago', 'tecnico'));
 

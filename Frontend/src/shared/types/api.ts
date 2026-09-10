@@ -71,6 +71,11 @@ export interface LoginResponse {
   usuario: string
 }
 
+/** Body de POST /api/auth/notificar-bloqueo (endpoint público). */
+export interface NotificarBloqueoRequest {
+  usuario: string
+}
+
 /** Respuesta paginada genérica (ver PaginaResponse<T> en el backend). */
 export interface PaginaResponse<T> {
   contenido: T[]
@@ -143,6 +148,8 @@ export interface Usuario {
   claveHash?: string
   nombres: string
   activo: boolean
+  tipobloqueo: 'pago' | 'tecnico' | null
+  notificacion: 'pago' | 'tecnico' | null
 }
 
 export interface Veterinario {

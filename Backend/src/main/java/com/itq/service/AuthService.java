@@ -42,6 +42,17 @@ public class AuthService {
                 );
 
         if (!Boolean.TRUE.equals(encontrado.isActivo())) {
+            String tipo = encontrado.getTipobloqueo();
+            if ("pago".equals(tipo)) {
+                throw new SecurityException(
+                        "El usuario se encuentra bloqueado por falta de pago"
+                );
+            }
+            if ("tecnico".equals(tipo)) {
+                throw new SecurityException(
+                        "El usuario se encuentra bloqueado por motivo técnico"
+                );
+            }
             throw new SecurityException(
                     "El usuario se encuentra inactivo"
             );
@@ -101,6 +112,50 @@ public class AuthService {
                 rol.getNombre(),
                 encontrado.getNombres(),
                 encontrado.getUsuario()
+        );
+    }
+
+    // =========================================================
+    // NOTIFICAR BLOQUEO (usuario bloqueado avisa al administrador)
+    // =========================================================
+
+    public void notificarBloqueo(String usuario)
+            throws SQLException {
+
+        if (usuario == null || usuario.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "El usuario es obligatorio"
+            );
+        }
+
+        Usuario encontrado = usuarioDAO
+                .buscarPorUsuarioParaLogin(usuario)
+                .orElseThrow(() ->
+                        new SecurityException(
+                                "Usuario no encontrado"
+                        )
+                );
+
+        if (Boolean.TRUE.equals(encontrado.isActivo())) {
+            throw new SecurityException(
+                    "El usuario no está bloqueado"
+            );
+        }
+
+        String tipo = encontrado.getTipobloqueo();
+        if (tipo == null) {
+            throw new SecurityException(
+                    "El usuario no tiene un tipo de bloqueo asignado"
+            );
+        }
+
+        /*
+         * La notificación guarda el mismo tipo con el que fue
+         * bloqueado el usuario (pago o tecnico).
+         */
+        usuarioDAO.actualizarNotificacion(
+                encontrado.getIdUsuario(),
+                tipo
         );
     }
 }
