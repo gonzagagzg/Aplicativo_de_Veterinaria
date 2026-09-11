@@ -337,10 +337,100 @@ public class UsuarioServlet extends HttpServlet {
                 return;
             }
 
+            String accion =
+                    segundoValor(
+                            req
+                    );
+
             UUID id =
                     UUID.fromString(
                             raw
                     );
+
+            // =================================================
+            // PUT /api/usuarios/{id}/bloquear
+            // =================================================
+
+            if (accion != null &&
+                    accion.equalsIgnoreCase("bloquear")) {
+
+                java.util.Map<String, String> body =
+                        JsonUtil.gson()
+                                .fromJson(
+                                        req.getReader(),
+                                        java.util.Map.class
+                                );
+
+                String tipoBloqueo =
+                        body != null
+                                ? body.get("tipoBloqueo")
+                                : null;
+
+                if (!service.bloquear(
+                        id,
+                        tipoBloqueo,
+                        idEmpresa,
+                        superUsuario
+                )) {
+
+                    HttpUtil.error(
+                            resp,
+                            404,
+                            "Usuario no encontrado"
+                    );
+
+                    return;
+                }
+
+                HttpUtil.json(
+                        resp,
+                        200,
+                        ApiResponse.ok(
+                                "Usuario bloqueado",
+                                null
+                        )
+                );
+
+                return;
+            }
+
+            // =================================================
+            // PUT /api/usuarios/{id}/desbloquear
+            // =================================================
+
+            if (accion != null &&
+                    accion.equalsIgnoreCase("desbloquear")) {
+
+                if (!service.desbloquear(
+                        id,
+                        idEmpresa,
+                        superUsuario
+                )) {
+
+                    HttpUtil.error(
+                            resp,
+                            404,
+                            "Usuario no encontrado"
+                    );
+
+                    return;
+                }
+
+                HttpUtil.json(
+                        resp,
+                        200,
+                        ApiResponse.ok(
+                                "Usuario desbloqueado",
+                                null
+                        )
+                );
+
+                return;
+            }
+
+            // =================================================
+            // PUT /api/usuarios/{id}
+            // =================================================
 
             Usuario obj =
                     JsonUtil.gson()

@@ -19,7 +19,7 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, nombres, activo
+                       usuario, nombres, activo, tipobloqueo, notificacion
                 FROM usuario
                 ORDER BY id_usuario
                 """;
@@ -44,7 +44,7 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, nombres, activo
+                       usuario, nombres, activo, tipobloqueo, notificacion
                 FROM usuario
                 WHERE id_empresa = ?
                 ORDER BY id_usuario
@@ -74,7 +74,7 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, nombres, activo
+                       usuario, nombres, activo, tipobloqueo, notificacion
                 FROM usuario
                 WHERE id_usuario = ?
                 """;
@@ -101,7 +101,7 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, nombres, activo
+                       usuario, nombres, activo, tipobloqueo, notificacion
                 FROM usuario
                 WHERE id_usuario = ?
                   AND id_empresa = ?
@@ -133,7 +133,7 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, clave_hash, nombres, activo
+                       usuario, clave_hash, nombres, activo, tipobloqueo, notificacion
                 FROM usuario
                 WHERE LOWER(usuario) = LOWER(?)
                 """;
@@ -158,7 +158,7 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, clave_hash, nombres, activo
+                       usuario, clave_hash, nombres, activo, tipobloqueo, notificacion
                 FROM usuario
                 WHERE id_usuario = ?
                 """;
@@ -186,8 +186,8 @@ public class UsuarioDAO {
 
         String sql = """
                 INSERT INTO usuario
-                (id_empresa, id_rol, usuario, clave_hash, nombres, activo)
-                VALUES (?, ?, ?, ?, ?, ?)
+                (id_empresa, id_rol, usuario, clave_hash, nombres, activo, tipobloqueo, notificacion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING id_usuario
                 """;
 
@@ -202,6 +202,8 @@ public class UsuarioDAO {
             ps.setString(4, obj.getClaveHash());
             ps.setString(5, obj.getNombres());
             ps.setBoolean(6, obj.isActivo());
+            ps.setString(7, obj.getTipobloqueo());
+            ps.setString(8, obj.getNotificacion());
 
             try (ResultSet rs = ps.executeQuery()) {
 
@@ -234,7 +236,9 @@ public class UsuarioDAO {
                     usuario = ?,
                     clave_hash = ?,
                     nombres = ?,
-                    activo = ?
+                    activo = ?,
+                    tipobloqueo = ?,
+                    notificacion = ?
                 WHERE id_usuario = ?
                 """;
 
@@ -249,7 +253,9 @@ public class UsuarioDAO {
             ps.setString(4, obj.getClaveHash());
             ps.setString(5, obj.getNombres());
             ps.setBoolean(6, obj.isActivo());
-            ps.setObject(7, obj.getIdUsuario());
+            ps.setString(7, obj.getTipobloqueo());
+            ps.setString(8, obj.getNotificacion());
+            ps.setObject(9, obj.getIdUsuario());
 
             return ps.executeUpdate() > 0;
         }
@@ -266,7 +272,9 @@ public class UsuarioDAO {
                     usuario = ?,
                     clave_hash = ?,
                     nombres = ?,
-                    activo = ?
+                    activo = ?,
+                    tipobloqueo = ?,
+                    notificacion = ?
                 WHERE id_usuario = ?
                   AND id_empresa = ?
                 """;
@@ -281,8 +289,71 @@ public class UsuarioDAO {
             ps.setString(3, obj.getClaveHash());
             ps.setString(4, obj.getNombres());
             ps.setBoolean(5, obj.isActivo());
-            ps.setObject(6, obj.getIdUsuario());
-            ps.setObject(7, idEmpresa);
+            ps.setString(6, obj.getTipobloqueo());
+            ps.setString(7, obj.getNotificacion());
+            ps.setObject(8, obj.getIdUsuario());
+            ps.setObject(9, idEmpresa);
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================================================
+    // BLOQUEO / DESBLOQUEO
+    // Solo actualiza activo, tipobloqueo y notificacion.
+    // No toca clave_hash ni demás datos.
+    // =========================================================
+
+    public boolean actualizarBloqueo(
+            UUID idUsuario,
+            Boolean activo,
+            String tipobloqueo
+    ) throws SQLException {
+
+        String sql = """
+                UPDATE usuario
+                SET activo = ?,
+                    tipobloqueo = ?,
+                    notificacion = NULL
+                WHERE id_usuario = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setBoolean(1, activo);
+            ps.setString(2, tipobloqueo);
+            ps.setObject(3, idUsuario);
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================================================
+    // NOTIFICACIÓN DE BLOQUEO
+    // Solo actualiza notificacion; no toca activo ni tipobloqueo.
+    // =========================================================
+
+    public boolean actualizarNotificacion(
+            UUID idUsuario,
+            String notificacion
+    ) throws SQLException {
+
+        String sql = """
+                UPDATE usuario
+                SET notificacion = ?
+                WHERE id_usuario = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(1, notificacion);
+            ps.setObject(2, idUsuario);
 
             return ps.executeUpdate() > 0;
         }
@@ -365,6 +436,14 @@ public class UsuarioDAO {
 
         obj.setActivo(
                 (Boolean) rs.getObject("activo")
+        );
+
+        obj.setTipobloqueo(
+                rs.getString("tipobloqueo")
+        );
+
+        obj.setNotificacion(
+                rs.getString("notificacion")
         );
 
         // IMPORTANTE:
