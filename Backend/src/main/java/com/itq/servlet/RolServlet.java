@@ -18,7 +18,35 @@ public class RolServlet extends HttpServlet {
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
             String raw = valorId(req);
-            if (raw == null) { HttpUtil.json(resp, 200, ApiResponse.ok("Listado", service.listar())); return; }
+            /*if (raw == null) { HttpUtil.json(resp, 200, ApiResponse.ok("Listado", service.listar())); return; }*/
+            if (raw == null) {
+                String rolActual =
+                (String) req.getAttribute("rol");
+
+                if ("SuperUsuario".equalsIgnoreCase(rolActual)) {
+
+                    HttpUtil.json(
+                            resp,
+                            200,
+                            ApiResponse.ok(
+                                    "Listado",
+                                    service.listar()
+                            )
+                    );
+                } else {
+                    HttpUtil.json(
+                            resp,
+                            200,
+                            ApiResponse.ok(
+                                    "Listado",
+                                    service.listarOperativos()
+                            )
+
+                    );
+                }
+                return;
+            }
+
             Integer id = Integer.valueOf(raw);
             var encontrado = service.buscarPorId(id);
             if (encontrado.isEmpty()) { HttpUtil.error(resp, 404, "Registro no encontrado"); return; }
@@ -32,7 +60,7 @@ public class RolServlet extends HttpServlet {
             Rol obj = JsonUtil.gson().fromJson(req.getReader(), Rol.class);
             HttpUtil.json(resp, 201, ApiResponse.ok("Registro creado", service.crear(obj)));
         } catch (SQLException e) { HttpUtil.error(resp, SqlErrorUtil.estadoHttp(e), e.getMessage()); }
-          catch (Exception e) { HttpUtil.error(resp, 400, "JSON o datos inválidos: " + e.getMessage()); }
+          catch (Exception e) { HttpUtil.error(resp, 400, "Datos inválidos: " + e.getMessage()); }
     }
 
     @Override protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {

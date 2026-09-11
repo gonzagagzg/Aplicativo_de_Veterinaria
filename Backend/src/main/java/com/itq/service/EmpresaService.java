@@ -145,6 +145,29 @@ public class EmpresaService {
 
         validarAdmin(request);
 
+        if (
+
+        empresa.getCorreo() != null
+
+                && !empresa.getCorreo().isBlank()
+
+                && dao.existeCorreo(empresa.getCorreo())
+            ) {
+            throw new IllegalArgumentException(
+                    "Ya existe una empresa registrada con este correo electrónico"
+            );
+        }
+        if (
+        empresa.getTelefono() != null
+                && !empresa.getTelefono().isBlank()
+                && dao.existeTelefono(empresa.getTelefono())
+
+            ) {
+            throw new IllegalArgumentException(
+                    "Ya existe una empresa registrada con este número de teléfono"
+            );
+        }
+
         try (Connection cn =
                      ConexionBD.obtenerConexion()) {
 

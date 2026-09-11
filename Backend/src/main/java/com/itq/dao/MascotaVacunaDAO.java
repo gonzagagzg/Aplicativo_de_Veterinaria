@@ -28,6 +28,13 @@ public class MascotaVacunaDAO {
     }
 
     public MascotaVacuna insertar(MascotaVacuna obj) throws SQLException {
+        if (obj.getFechaAplicacion().isBefore(LocalDate.now())) {
+
+            throw new SQLException("La fecha de aplicación debe ser actual o futura");
+
+        }
+
+
         String sql = "INSERT INTO mascota_vacuna (id_empresa, id_mascota, id_vacuna, fecha_aplicacion) VALUES (?, ?, ?, ?) RETURNING id_mascota_vacuna";
         try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
             ps.setObject(1, obj.getIdEmpresa());
@@ -43,6 +50,12 @@ public class MascotaVacunaDAO {
     }
 
     public boolean actualizar(MascotaVacuna obj) throws SQLException {
+        if (obj.getFechaAplicacion().isBefore(LocalDate.now())) {
+
+            throw new SQLException("La fecha de aplicación debe ser actual o futura");
+
+        }
+
         String sql = "UPDATE mascota_vacuna SET id_empresa = ?, id_mascota = ?, id_vacuna = ?, fecha_aplicacion = ? WHERE id_mascota_vacuna = ?";
         try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql)) {
             ps.setObject(1, obj.getIdEmpresa());

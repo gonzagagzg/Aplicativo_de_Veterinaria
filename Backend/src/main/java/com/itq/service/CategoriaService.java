@@ -23,7 +23,7 @@ public class CategoriaService {
         }
 
         validarEmpresaSesion(idEmpresa);
-
+        System.out.println("Empresa sesión: " + idEmpresa);
         return dao.listarPorEmpresa(idEmpresa);
     }
 

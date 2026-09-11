@@ -7,6 +7,8 @@ public class Veterinario {
     private UUID idUsuario;
     private UUID idEmpresa;
     private String especialidad;
+    private String usuario;
+    private String nombres;
 
     public Veterinario() {}
 
@@ -18,4 +20,8 @@ public class Veterinario {
     public void setIdEmpresa(UUID idEmpresa) { this.idEmpresa = idEmpresa; }
     public String getEspecialidad() { return especialidad; }
     public void setEspecialidad(String especialidad) { this.especialidad = especialidad; }
+    public String getUsuario() { return usuario; }
+    public void setUsuario(String usuario) { this.usuario = usuario;}
+    public String getNombres() { return nombres; }
+    public void setNombres(String nombres) { this.nombres = nombres; }
 }

@@ -287,7 +287,7 @@ public class UsuarioServlet extends HttpServlet {
             HttpUtil.error(
                     resp,
                     400,
-                    "JSON o datos inválidos: "
+                    "   Datos inválidos: "
                             + e.getMessage()
             );
         }

@@ -98,6 +98,51 @@ public class EmpresaDAO {
         }
     }
 
+
+            // ========= NUEVOS MÉTODOS =========
+
+            public boolean existeCorreo(String correo) throws SQLException {
+
+                String sql = """
+        SELECT 1
+        FROM empresa
+        WHERE correo = ?
+        LIMIT 1
+        """;
+                try (
+        Connection cn = ConexionBD.obtenerConexion();
+        PreparedStatement ps = cn.prepareStatement(sql)
+                ) {
+
+                    ps.setString(1, correo);
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        return rs.next();
+                    }
+                }
+            }
+            public boolean existeTelefono(String telefono) throws SQLException {
+
+                String sql = """
+        SELECT 1
+        FROM empresa
+        WHERE telefono = ?
+        LIMIT 1
+        """;
+                try (
+
+        Connection cn = ConexionBD.obtenerConexion();
+
+        PreparedStatement ps = cn.prepareStatement(sql)
+
+                ) {
+
+                    ps.setString(1, telefono);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        return rs.next();
+                    }
+                }
+            }
     // =========================================================
     // CREAR
     // =========================================================

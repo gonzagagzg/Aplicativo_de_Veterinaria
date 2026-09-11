@@ -204,104 +204,122 @@ public class EmpresaServlet extends HttpServlet {
         }
     }
 
-    // =========================================================
-    // POST
-    // =========================================================
+        // =========================================================
+        // POST
+        // =========================================================
 
-    @Override
-    protected void doPost(
-            HttpServletRequest req,
-            HttpServletResponse resp
-    ) throws IOException {
+        @Override
+        protected void doPost(
+                HttpServletRequest req,
+                HttpServletResponse resp
+        ) throws IOException {
 
-        try {
+            try {
 
-            exigirSuperUsuario(req);
+                exigirSuperUsuario(req);
 
-            Autorizacion.exigir(
-                    req,
-                    "EMPRESAS",
-                    "CREAR"
-            );
+                Autorizacion.exigir(
+                        req,
+                        "EMPRESAS",
+                        "CREAR"
+                );
 
-            EmpresaConAdminRequest request =
-                    JsonUtil.gson()
-                            .fromJson(
-                                    req.getReader(),
-                                    EmpresaConAdminRequest.class
-                            );
+                EmpresaConAdminRequest request =
+                        JsonUtil.gson()
+                                .fromJson(
+                                        req.getReader(),
+                                        EmpresaConAdminRequest.class
+                                );
 
-            if (request == null) {
+                if (request == null) {
+
+                    HttpUtil.error(
+                            resp,
+                            400,
+                            "Los datos de la empresa son obligatorios"
+                    );
+
+                    return;
+                }
+
+                /*
+                 * Alta completa: la empresa y su usuario administrador
+                 * se crean juntos en una transacción (crearConAdmin).
+                 */
+                Empresa creada =
+                        service.crearConAdmin(
+                                request
+                        );
+
+                HttpUtil.json(
+                        resp,
+                        201,
+                        ApiResponse.ok(
+                                "Empresa creada",
+                                creada
+                        )
+                );
+
+            } catch (SecurityException e) {
+
+                HttpUtil.error(
+                        resp,
+                        403,
+                        e.getMessage()
+                );
+
+            } catch (IllegalArgumentException e) {
 
                 HttpUtil.error(
                         resp,
                         400,
-                        "Los datos de la empresa son obligatorios"
+                        e.getMessage()
                 );
 
-                return;
-            }
+            } catch (SQLException e) {
 
-            /*
-             * Alta completa: la empresa y su usuario administrador
-             * se crean juntos en una transacción (crearConAdmin).
-             */
-            Empresa creada =
-                    service.crearConAdmin(
-                            request
+                if (e.getMessage() != null &&
+                e.getMessage().contains("empresa_ruc_key")) {
+
+                    HttpUtil.error(
+                            resp,
+                            400,
+                            "Ya existe una empresa registrada con este RUC"
+
                     );
 
-            HttpUtil.json(
-                    resp,
-                    201,
-                    ApiResponse.ok(
-                            "Empresa creada",
-                            creada
-                    )
-            );
+                    return;
+                }
 
-        } catch (SecurityException e) {
+                HttpUtil.error(
 
-            HttpUtil.error(
-                    resp,
-                    403,
-                    e.getMessage()
-            );
+                        resp,
 
-        } catch (IllegalArgumentException e) {
+                        SqlErrorUtil.estadoHttp(e),
 
-            HttpUtil.error(
-                    resp,
-                    400,
-                    e.getMessage()
-            );
+                        e.getMessage()
 
-        } catch (SQLException e) {
+                );
 
-            HttpUtil.error(
-                    resp,
-                    SqlErrorUtil.estadoHttp(e),
-                    e.getMessage()
-            );
 
-        } catch (IllegalStateException e) {
+            } catch (IllegalStateException e) {
 
-            HttpUtil.error(
-                    resp,
-                    500,
-                    e.getMessage()
-            );
+                HttpUtil.error(
+                        resp,
+                        500,
+                        e.getMessage()
+                );
 
-        } catch (Exception e) {
+            } catch (Exception e) {
 
-            HttpUtil.error(
-                    resp,
-                    400,
-                    "JSON o datos inválidos: "
-                            + e.getMessage()
-            );
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "JSON o datos inválidos: "
+                                + e.getMessage()
+                );
+            }
         }
-    }
 
     // =========================================================
     // PUT
@@ -491,8 +509,48 @@ public class EmpresaServlet extends HttpServlet {
                     "Datos inválidos: "
                             + e.getMessage()
             );
-
+/*
         } catch (SQLException e) {
+
+            HttpUtil.error(
+                    resp,
+                    SqlErrorUtil.estadoHttp(e),
+                    e.getMessage()
+            );
+*/
+        } catch (SQLException e) {
+
+            if (e.getMessage() != null
+
+                    && e.getMessage().contains("empresa_ruc_key")) {
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "Ya existe una empresa registrada con este RUC"
+                );
+
+                return;
+            }
+            if (e.getMessage() != null &&
+
+            e.getMessage().contains("uk_empresa_correo")) {
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "Ya existe una empresa registrada con este correo"
+                );
+                return;
+            }
+
+            if (e.getMessage() != null &&
+            e.getMessage().contains("uk_empresa_telefono")) {
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "Ya existe una empresa registrada con este teléfono"
+                );
+                return;
+            }
 
             HttpUtil.error(
                     resp,

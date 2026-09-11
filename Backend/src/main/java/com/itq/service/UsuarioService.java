@@ -22,10 +22,10 @@ public class UsuarioService {
      * 3 = Veterinario
      * 4 = Recepcionista
      * 5 = Asistente Clínico
-     * 7 = Farmacéutico
+     * 9 = Farmacéutico
      */
     private static final Set<Integer> ROLES_EMPLEADOS =
-            Set.of(3, 4, 5, 7);
+            Set.of(3, 4, 5, 9);
 
     // =========================================================
     // LISTAR

@@ -32,7 +32,7 @@ public class PermisoServlet extends HttpServlet {
             Permiso obj = JsonUtil.gson().fromJson(req.getReader(), Permiso.class);
             HttpUtil.json(resp, 201, ApiResponse.ok("Registro creado", service.crear(obj)));
         } catch (SQLException e) { HttpUtil.error(resp, SqlErrorUtil.estadoHttp(e), e.getMessage()); }
-          catch (Exception e) { HttpUtil.error(resp, 400, "JSON o datos inválidos: " + e.getMessage()); }
+          catch (Exception e) { HttpUtil.error(resp, 400, "Datos inválidos: " + e.getMessage()); }
     }
 
     @Override protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {

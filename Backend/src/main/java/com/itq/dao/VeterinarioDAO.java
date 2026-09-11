@@ -18,10 +18,15 @@ public class VeterinarioDAO {
     public List<Veterinario> listar() throws SQLException {
 
         String sql = """
-                SELECT id_veterinario, id_usuario,
-                       id_empresa, especialidad
-                FROM veterinario
-                ORDER BY id_veterinario
+                SELECT v.id_veterinario, 
+                       v.id_usuario,
+                       v.id_empresa, 
+                       v.especialidad, 
+                       u.usuario,
+                       u.nombres
+                FROM veterinario v
+                INNER JOIN usuario u ON u.id_usuario = v.id_usuario
+                ORDER BY v.id_veterinario
                 """;
 
         List<Veterinario> lista = new ArrayList<>();
@@ -48,11 +53,16 @@ public class VeterinarioDAO {
             throws SQLException {
 
         String sql = """
-                SELECT id_veterinario, id_usuario,
-                       id_empresa, especialidad
-                FROM veterinario
-                WHERE id_empresa = ?
-                ORDER BY id_veterinario
+                SELECT v.id_veterinario, 
+                       v.id_usuario,
+                       v.id_empresa, 
+                       v.especialidad, 
+                       u.usuario,
+                       u.nombres
+                FROM veterinario v
+                INNER JOIN usuario u ON u.id_usuario = v.id_usuario
+                WHERE v.id_empresa = ?
+                ORDER BY v.id_veterinario
                 """;
 
         List<Veterinario> lista = new ArrayList<>();
@@ -83,10 +93,15 @@ public class VeterinarioDAO {
             throws SQLException {
 
         String sql = """
-                SELECT id_veterinario, id_usuario,
-                       id_empresa, especialidad
-                FROM veterinario
-                WHERE id_veterinario = ?
+                SELECT v.id_veterinario, 
+                       v.id_usuario,
+                       v.id_empresa, 
+                       v.especialidad, 
+                       u.usuario, 
+                       u.nombres
+                FROM veterinario v 
+                INNER JOIN usuario u ON u.id_usuario = v.id_usuario
+                WHERE v.id_veterinario = ?
                 """;
 
         try (
@@ -111,11 +126,16 @@ public class VeterinarioDAO {
     ) throws SQLException {
 
         String sql = """
-                SELECT id_veterinario, id_usuario,
-                       id_empresa, especialidad
-                FROM veterinario
-                WHERE id_veterinario = ?
-                  AND id_empresa = ?
+                SELECT v.id_veterinario, 
+                       v.id_usuario,
+                       v.id_empresa, 
+                       v.especialidad, 
+                       u.usuario, 
+                       u.nombres
+                FROM veterinario v 
+                INNER JOIN usuario u ON u.id_usuario = v.id_usuario
+                WHERE v.id_veterinario = ?
+                  AND v.id_empresa = ?
                 """;
 
         try (
@@ -186,7 +206,7 @@ public class VeterinarioDAO {
             throws SQLException {
 
         String sql = """
-                UPDATE veterinario
+                UPDATE veterinario 
                 SET id_usuario = ?,
                     id_empresa = ?,
                     especialidad = ?
@@ -213,7 +233,7 @@ public class VeterinarioDAO {
     ) throws SQLException {
 
         String sql = """
-                UPDATE veterinario
+                UPDATE veterinario 
                 SET id_usuario = ?,
                     especialidad = ?
                 WHERE id_veterinario = ?
@@ -242,7 +262,7 @@ public class VeterinarioDAO {
             throws SQLException {
 
         String sql = """
-                DELETE FROM veterinario
+                DELETE FROM veterinario 
                 WHERE id_veterinario = ?
                 """;
 
@@ -313,7 +333,13 @@ public class VeterinarioDAO {
         obj.setEspecialidad(
                 rs.getString("especialidad")
         );
+        obj.setUsuario(
+                rs.getString("usuario")
+        );
 
+        obj.setNombres(
+                rs.getString("nombres")
+        );
         return obj;
     }
 }

@@ -93,7 +93,7 @@ export function AppLayout() {
   const { rol, nombreUsuario, limpiar } = useSesion()
   const permisos = usePermisos()
   const esSuper = esSuperUsuario(rol)
-
+/**
   const secciones = SECCIONES.map((seccion) => ({
     ...seccion,
     items: seccion.items.filter((item) => {
@@ -102,6 +102,27 @@ export function AppLayout() {
       return permisos.tieneAccesoAModulo(item.modulo)
     }),
   })).filter((seccion) => seccion.items.length > 0)
+*/
+  const secciones = SECCIONES
+
+   .filter((seccion) => {
+   if (esSuper) {
+   return seccion.titulo === 'Configuración'
+   }
+   return true
+   })
+
+   .map((seccion) => ({
+
+   ...seccion,
+   items: seccion.items.filter((item) => {
+   if (item.soloSuperUsuario) return esSuper
+   if (item.modulo === null) return true
+   return permisos.tieneAccesoAModulo(item.modulo)
+   }),
+   }))
+
+   .filter((seccion) => seccion.items.length > 0)
 
   return (
     <>

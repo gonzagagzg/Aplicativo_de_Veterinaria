@@ -9,10 +9,38 @@ import java.util.Optional;
 
 public class RolDAO {
     public List<Rol> listar() throws SQLException {
+
         String sql = "SELECT id_rol, nombre FROM rol ORDER BY id_rol";
         List<Rol> lista = new ArrayList<>();
         try (Connection cn = ConexionBD.obtenerConexion(); PreparedStatement ps = cn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) lista.add(mapear(rs));
+        }
+        return lista;
+    }
+
+    public List<Rol> listarOperativos() throws SQLException {
+        String sql = """
+                SELECT id_rol, nombre
+                FROM rol
+                WHERE nombre NOT IN (
+                'Administrador Global',
+                'Administrador Local',
+                'SuperUsuario'
+                
+                )
+                ORDER BY id_rol
+                
+                """;
+
+        List<Rol> lista = new ArrayList<>();
+
+        try (Connection cn = ConexionBD.obtenerConexion();
+             PreparedStatement ps = cn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(mapear(rs));
+            }
         }
         return lista;
     }

@@ -408,6 +408,7 @@ function ModalEditarEmpresa({
           direccion,
           correo: correo || undefined,
           telefono: telefono || undefined,
+          activo: empresa.activo,
         },
       },
       { onSuccess: cerrarYLimpiar },
