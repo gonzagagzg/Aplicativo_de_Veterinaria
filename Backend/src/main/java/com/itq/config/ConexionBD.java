@@ -19,7 +19,7 @@ public final class ConexionBD {
             "postgres";
 
     private static final String CONTRASENA =
-            "12345";
+            "Izabela123";
 
     // =========================================================
     // POOL ÚNICO DE CONEXIONES
