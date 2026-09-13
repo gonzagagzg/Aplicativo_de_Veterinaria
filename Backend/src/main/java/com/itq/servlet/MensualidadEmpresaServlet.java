@@ -35,12 +35,25 @@ public class MensualidadEmpresaServlet extends HttpServlet {
 
         try {
 
+            UUID idEmpresaSesion =
+                    obtenerIdEmpresa(req);
+
+            boolean superUsuario =
+                    esSuperUsuario(req);
+
             String raw =
                     valorId(req);
 
-            // -------------------------------------------------
+            // =================================================
             // GET /api/mensualidades
-            // -------------------------------------------------
+            //
+            // SuperUsuario:
+            //      ve todas las mensualidades.
+            //
+            // Administrador Local:
+            //      ve solamente las mensualidades
+            //      de su propia empresa.
+            // =================================================
 
             if (raw == null) {
 
@@ -50,23 +63,53 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                         "LISTAR"
                 );
 
-                HttpUtil.json(
-                        resp,
-                        200,
-                        ApiResponse.ok(
-                                "Listado",
-                                service.listar()
-                        )
-                );
+                if (superUsuario) {
+
+                    HttpUtil.json(
+                            resp,
+                            200,
+                            ApiResponse.ok(
+                                    "Listado",
+                                    service.listar()
+                            )
+                    );
+
+                } else {
+
+                    if (idEmpresaSesion == null) {
+
+                        throw new SecurityException(
+                                "El usuario no tiene una empresa asignada"
+                        );
+                    }
+
+                    HttpUtil.json(
+                            resp,
+                            200,
+                            ApiResponse.ok(
+                                    "Mensualidades de la veterinaria",
+                                    service.listarPorEmpresa(
+                                            idEmpresaSesion
+                                    )
+                            )
+                    );
+                }
 
                 return;
             }
 
-            // -------------------------------------------------
+            // =================================================
             // GET /api/mensualidades/empresa/{idEmpresa}
-            // -------------------------------------------------
+            //
+            // SOLO SUPERUSUARIO
+            //
+            // El Administrador Local NO puede enviar
+            // manualmente otra empresa en la URL.
+            // =================================================
 
             if (raw.equalsIgnoreCase("empresa")) {
+
+                exigirSuperUsuario(req);
 
                 Autorizacion.exigir(
                         req,
@@ -97,7 +140,7 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                         resp,
                         200,
                         ApiResponse.ok(
-                                "Listado",
+                                "Mensualidades de la empresa",
                                 service.listarPorEmpresa(
                                         idEmpresa
                                 )
@@ -107,9 +150,16 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                 return;
             }
 
-            // -------------------------------------------------
+            // =================================================
             // GET /api/mensualidades/{id}
-            // -------------------------------------------------
+            //
+            // SuperUsuario:
+            //      puede consultar cualquier mensualidad.
+            //
+            // Administrador Local:
+            //      únicamente puede consultar una mensualidad
+            //      perteneciente a su propia empresa.
+            // =================================================
 
             Autorizacion.exigir(
                     req,
@@ -117,11 +167,18 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                     "VER"
             );
 
-            UUID id =
+            UUID idMensualidad =
                     UUID.fromString(raw);
 
             var encontrado =
-                    service.buscarPorId(id);
+                    superUsuario
+                            ? service.buscarPorId(
+                                    idMensualidad
+                            )
+                            : service.buscarPorIdYEmpresa(
+                                    idMensualidad,
+                                    idEmpresaSesion
+                            );
 
             if (encontrado.isEmpty()) {
 
@@ -178,7 +235,10 @@ public class MensualidadEmpresaServlet extends HttpServlet {
     }
 
     // =========================================================
-    // POST - CREAR
+    // POST
+    // CREAR MENSUALIDAD
+    //
+    // SOLO SUPERUSUARIO
     // =========================================================
 
     @Override
@@ -188,6 +248,8 @@ public class MensualidadEmpresaServlet extends HttpServlet {
     ) throws IOException {
 
         try {
+
+            exigirSuperUsuario(req);
 
             Autorizacion.exigir(
                     req,
@@ -201,6 +263,17 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                                     req.getReader(),
                                     MensualidadEmpresa.class
                             );
+
+            if (obj == null) {
+
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "Los datos de la mensualidad son obligatorios"
+                );
+
+                return;
+            }
 
             MensualidadEmpresa creada =
                     service.crear(obj);
@@ -238,6 +311,14 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                     e.getMessage()
             );
 
+        } catch (IllegalStateException e) {
+
+            HttpUtil.error(
+                    resp,
+                    500,
+                    e.getMessage()
+            );
+
         } catch (Exception e) {
 
             HttpUtil.error(
@@ -250,7 +331,10 @@ public class MensualidadEmpresaServlet extends HttpServlet {
     }
 
     // =========================================================
-    // PUT - EDITAR / REACTIVAR
+    // PUT
+    // EDITAR / REACTIVAR
+    //
+    // SOLO SUPERUSUARIO
     // =========================================================
 
     @Override
@@ -260,6 +344,8 @@ public class MensualidadEmpresaServlet extends HttpServlet {
     ) throws IOException {
 
         try {
+
+            exigirSuperUsuario(req);
 
             String raw =
                     valorId(req);
@@ -281,12 +367,14 @@ public class MensualidadEmpresaServlet extends HttpServlet {
             String accion =
                     segundoValor(req);
 
-            // -------------------------------------------------
+            // =================================================
             // PUT /api/mensualidades/{id}/reactivar
-            // -------------------------------------------------
+            // =================================================
 
             if (accion != null &&
-                    accion.equalsIgnoreCase("reactivar")) {
+                    accion.equalsIgnoreCase(
+                            "reactivar"
+                    )) {
 
                 Autorizacion.exigir(
                         req,
@@ -317,9 +405,9 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                 return;
             }
 
-            // -------------------------------------------------
+            // =================================================
             // PUT /api/mensualidades/{id}
-            // -------------------------------------------------
+            // =================================================
 
             Autorizacion.exigir(
                     req,
@@ -345,9 +433,13 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                 return;
             }
 
-            obj.setIdMensualidad(id);
+            obj.setIdMensualidad(
+                    id
+            );
 
-            if (!service.actualizar(obj)) {
+            if (!service.actualizar(
+                    obj
+            )) {
 
                 HttpUtil.error(
                         resp,
@@ -391,6 +483,14 @@ public class MensualidadEmpresaServlet extends HttpServlet {
                     e.getMessage()
             );
 
+        } catch (IllegalStateException e) {
+
+            HttpUtil.error(
+                    resp,
+                    500,
+                    e.getMessage()
+            );
+
         } catch (Exception e) {
 
             HttpUtil.error(
@@ -403,7 +503,10 @@ public class MensualidadEmpresaServlet extends HttpServlet {
     }
 
     // =========================================================
-    // DELETE - SOFT DELETE
+    // DELETE
+    // SOFT DELETE
+    //
+    // SOLO SUPERUSUARIO
     // =========================================================
 
     @Override
@@ -413,6 +516,8 @@ public class MensualidadEmpresaServlet extends HttpServlet {
     ) throws IOException {
 
         try {
+
+            exigirSuperUsuario(req);
 
             Autorizacion.exigir(
                     req,
@@ -492,7 +597,57 @@ public class MensualidadEmpresaServlet extends HttpServlet {
     }
 
     // =========================================================
-    // UTILIDADES PATH
+    // EMPRESA DEL JWT
+    // =========================================================
+
+    private UUID obtenerIdEmpresa(
+            HttpServletRequest req
+    ) {
+
+        return (UUID)
+                req.getAttribute(
+                        "idEmpresa"
+                );
+    }
+
+    // =========================================================
+    // VERIFICAR SUPERUSUARIO
+    // =========================================================
+
+    private boolean esSuperUsuario(
+            HttpServletRequest req
+    ) {
+
+        String rol =
+                (String)
+                        req.getAttribute(
+                                "rol"
+                        );
+
+        return rol != null &&
+                rol.equalsIgnoreCase(
+                        "SuperUsuario"
+                );
+    }
+
+    // =========================================================
+    // EXIGIR SUPERUSUARIO
+    // =========================================================
+
+    private void exigirSuperUsuario(
+            HttpServletRequest req
+    ) {
+
+        if (!esSuperUsuario(req)) {
+
+            throw new SecurityException(
+                    "Esta operación requiere SuperUsuario"
+            );
+        }
+    }
+
+    // =========================================================
+    // PRIMER VALOR DEL PATH
     // =========================================================
 
     private String valorId(
@@ -521,6 +676,10 @@ public class MensualidadEmpresaServlet extends HttpServlet {
 
         return partes[0];
     }
+
+    // =========================================================
+    // SEGUNDO VALOR DEL PATH
+    // =========================================================
 
     private String segundoValor(
             HttpServletRequest req

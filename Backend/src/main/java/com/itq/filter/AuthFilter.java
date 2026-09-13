@@ -51,11 +51,13 @@ public class AuthFilter implements Filter {
                         );
 
         // =====================================================
-        // LOGIN PÚBLICO
+        // ENDPOINTS PÚBLICOS DE AUTENTICACIÓN
         // =====================================================
 
         if (path.equals("/api/auth/login") ||
-                path.equals("/api/auth/notificar-bloqueo")) {
+                path.equals("/api/auth/notificar-bloqueo") ||
+                path.equals("/api/auth/recuperar-password") ||
+                path.equals("/api/auth/restablecer-password")) {
 
             chain.doFilter(
                     request,
@@ -164,8 +166,8 @@ public class AuthFilter implements Filter {
                     idEmpresaClaim == null
                             ? null
                             : UUID.fromString(
-                            idEmpresaClaim
-                    );
+                                    idEmpresaClaim
+                            );
 
             Integer idRol =
                     jwt.getClaim(

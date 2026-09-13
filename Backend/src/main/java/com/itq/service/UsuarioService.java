@@ -9,11 +9,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public class UsuarioService {
 
     private final UsuarioDAO dao =
             new UsuarioDAO();
+
+    private static final Pattern PATRON_CORREO =
+            Pattern.compile(
+                    "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$"
+            );
 
     /*
      * Roles que un usuario local puede asignar
@@ -83,7 +89,30 @@ public class UsuarioService {
                 idEmpresa
         );
     }
+    // =========================================================
+    // ADMINISTRADOR LOCAL - LISTAR USUARIOS VETERINARIO
+    // =========================================================
 
+    public List<Usuario> listarVeterinariosDisponibles(
+            UUID idEmpresa,
+            boolean superUsuario
+    ) throws SQLException {
+
+        if (superUsuario) {
+            throw new SecurityException(
+                    "Esta operación está destinada al Administrador Local"
+            );
+        }
+
+        validarEmpresaSesion(
+                idEmpresa
+        );
+
+        return dao.listarPorEmpresaYRol(
+                idEmpresa,
+                3
+        );
+    }
     // =========================================================
     // BUSCAR POR ID
     // =========================================================
@@ -161,6 +190,20 @@ public class UsuarioService {
         validarBase(
                 obj
         );
+
+        /*
+         * Validar que el correo no esté registrado
+         * en otro usuario.
+         */
+        if (obj.getCorreo() != null &&
+                dao.existeCorreo(
+                        obj.getCorreo()
+                )) {
+
+            throw new IllegalArgumentException(
+                    "Ya existe un usuario registrado con este correo electrónico"
+            );
+        }
 
         if (vacio(
                 obj.getClaveHash()
@@ -263,6 +306,21 @@ public class UsuarioService {
         validarBase(
                 obj
         );
+
+        /*
+         * Validar que el correo no pertenezca
+         * a otro usuario distinto.
+         */
+        if (obj.getCorreo() != null &&
+                dao.existeCorreoEnOtroUsuario(
+                        obj.getCorreo(),
+                        obj.getIdUsuario()
+                )) {
+
+            throw new IllegalArgumentException(
+                    "Ya existe otro usuario registrado con este correo electrónico"
+            );
+        }
 
         /*
          * Si no llega contraseña nueva,
@@ -488,6 +546,41 @@ public class UsuarioService {
                 obj.getNombres()
                         .trim()
         );
+
+        /*
+         * El correo es opcional para no romper
+         * usuarios antiguos, pero si llega,
+         * debe tener un formato válido.
+         */
+        if (obj.getCorreo() != null &&
+                !obj.getCorreo()
+                        .trim()
+                        .isEmpty()) {
+
+            String correo =
+                    obj.getCorreo()
+                            .trim()
+                            .toLowerCase();
+
+            if (!PATRON_CORREO
+                    .matcher(correo)
+                    .matches()) {
+
+                throw new IllegalArgumentException(
+                        "El correo electrónico no es válido"
+                );
+            }
+
+            obj.setCorreo(
+                    correo
+            );
+
+        } else {
+
+            obj.setCorreo(
+                    null
+            );
+        }
     }
 
     // =========================================================

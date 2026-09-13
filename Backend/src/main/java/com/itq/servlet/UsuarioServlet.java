@@ -78,6 +78,35 @@ public class UsuarioServlet extends HttpServlet {
             }
 
             // =================================================
+            // GET /api/usuarios/veterinarios-disponibles
+            // =================================================
+
+            if (raw.equalsIgnoreCase(
+                    "veterinarios-disponibles"
+            )) {
+
+                Autorizacion.exigir(
+                        req,
+                        "USUARIOS",
+                        "LISTAR"
+                );
+
+                HttpUtil.json(
+                        resp,
+                        200,
+                        ApiResponse.ok(
+                                "Usuarios veterinarios disponibles",
+                                service.listarVeterinariosDisponibles(
+                                        idEmpresa,
+                                        superUsuario
+                                )
+                        )
+                );
+
+                return;
+            }
+
+            // =================================================
             // GET /api/usuarios/empresa/{idEmpresa}
             // =================================================
 

@@ -53,6 +53,45 @@ public class MensualidadEmpresaService {
     }
 
     // =========================================================
+// BUSCAR POR ID DENTRO DE UNA EMPRESA
+// =========================================================
+
+public Optional<MensualidadEmpresa> buscarPorIdYEmpresa(
+        UUID idMensualidad,
+        UUID idEmpresa
+) throws SQLException {
+
+    if (idMensualidad == null) {
+        throw new IllegalArgumentException(
+                "La mensualidad es obligatoria"
+        );
+    }
+
+    if (idEmpresa == null) {
+        throw new IllegalArgumentException(
+                "La empresa es obligatoria"
+        );
+    }
+
+    Optional<MensualidadEmpresa> encontrada =
+            dao.buscarPorId(
+                    idMensualidad
+            );
+
+    if (encontrada.isEmpty()) {
+        return Optional.empty();
+    }
+
+    if (!idEmpresa.equals(
+            encontrada.get().getIdEmpresa()
+    )) {
+        return Optional.empty();
+    }
+
+    return encontrada;
+}
+
+    // =========================================================
     // BUSCAR POR ID
     // Solo devuelve registros activos
     // =========================================================

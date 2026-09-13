@@ -18,6 +18,8 @@ public class VeterinarioService {
     private final UsuarioDAO usuarioDAO =
             new UsuarioDAO();
 
+    private static final int ROL_VETERINARIO = 3;
+
     public List<Veterinario> listar(
             UUID idEmpresa,
             boolean superUsuario
@@ -67,7 +69,7 @@ public class VeterinarioService {
             validarEmpresaSesion(idEmpresa);
 
             /*
-             * Un usuario normal no puede decidir
+             * Un usuario local no puede decidir
              * la empresa del veterinario.
              */
             obj.setIdEmpresa(idEmpresa);
@@ -76,10 +78,12 @@ public class VeterinarioService {
         validar(obj);
 
         /*
-         * El usuario asociado al veterinario
-         * debe pertenecer a la misma empresa.
+         * El usuario asociado debe:
+         * 1. existir,
+         * 2. pertenecer a la misma empresa,
+         * 3. tener rol Veterinario.
          */
-        validarUsuarioDeEmpresa(
+        validarUsuarioVeterinarioDeEmpresa(
                 obj.getIdUsuario(),
                 obj.getIdEmpresa()
         );
@@ -105,7 +109,7 @@ public class VeterinarioService {
 
             validar(obj);
 
-            validarUsuarioDeEmpresa(
+            validarUsuarioVeterinarioDeEmpresa(
                     obj.getIdUsuario(),
                     obj.getIdEmpresa()
             );
@@ -128,10 +132,10 @@ public class VeterinarioService {
         }
 
         /*
-         * También comprobamos que el usuario
-         * seleccionado pertenezca a esa empresa.
+         * El usuario seleccionado debe pertenecer
+         * a la misma empresa y tener rol Veterinario.
          */
-        validarUsuarioDeEmpresa(
+        validarUsuarioVeterinarioDeEmpresa(
                 obj.getIdUsuario(),
                 idEmpresa
         );
@@ -164,7 +168,7 @@ public class VeterinarioService {
         );
     }
 
-    private void validarUsuarioDeEmpresa(
+    private void validarUsuarioVeterinarioDeEmpresa(
             UUID idUsuario,
             UUID idEmpresa
     ) throws SQLException {
@@ -181,15 +185,26 @@ public class VeterinarioService {
             );
         }
 
-        Optional<Usuario> usuario =
+        Optional<Usuario> usuarioOpt =
                 usuarioDAO.buscarPorIdYEmpresa(
                         idUsuario,
                         idEmpresa
                 );
 
-        if (usuario.isEmpty()) {
+        if (usuarioOpt.isEmpty()) {
             throw new IllegalArgumentException(
                     "El usuario no pertenece a la empresa indicada"
+            );
+        }
+
+        Usuario usuario =
+                usuarioOpt.get();
+
+        if (usuario.getIdRol() == null ||
+                usuario.getIdRol() != ROL_VETERINARIO) {
+
+            throw new IllegalArgumentException(
+                    "El usuario seleccionado no tiene rol Veterinario"
             );
         }
     }
@@ -214,14 +229,27 @@ public class VeterinarioService {
             );
         }
 
+        if (vacio(obj.getCodigoVeterinario())) {
+            throw new IllegalArgumentException(
+                    "El código del veterinario es obligatorio"
+            );
+        }
+
         if (vacio(obj.getEspecialidad())) {
             throw new IllegalArgumentException(
                     "La especialidad es obligatoria"
             );
         }
 
+        obj.setCodigoVeterinario(
+                obj.getCodigoVeterinario()
+                        .trim()
+                        .toUpperCase()
+        );
+
         obj.setEspecialidad(
-                obj.getEspecialidad().trim()
+                obj.getEspecialidad()
+                        .trim()
         );
     }
 

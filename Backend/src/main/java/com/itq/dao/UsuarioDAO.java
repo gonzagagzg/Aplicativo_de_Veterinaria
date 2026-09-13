@@ -19,7 +19,8 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, nombres, activo, tipobloqueo, notificacion
+                       usuario, nombres, activo,
+                       tipobloqueo, notificacion, correo
                 FROM usuario
                 ORDER BY id_usuario
                 """;
@@ -44,7 +45,8 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, nombres, activo, tipobloqueo, notificacion
+                       usuario, nombres, activo,
+                       tipobloqueo, notificacion, correo
                 FROM usuario
                 WHERE id_empresa = ?
                 ORDER BY id_usuario
@@ -60,6 +62,7 @@ public class UsuarioDAO {
             ps.setObject(1, idEmpresa);
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 while (rs.next()) {
                     lista.add(mapearSeguro(rs));
                 }
@@ -74,7 +77,8 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, nombres, activo, tipobloqueo, notificacion
+                       usuario, nombres, activo,
+                       tipobloqueo, notificacion, correo
                 FROM usuario
                 WHERE id_usuario = ?
                 """;
@@ -87,13 +91,53 @@ public class UsuarioDAO {
             ps.setObject(1, idUsuario);
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 return rs.next()
                         ? Optional.of(mapearSeguro(rs))
                         : Optional.empty();
             }
         }
     }
+    // =========================================================
+    // LISTAR USUARIOS POR EMPRESA Y ROL
+    // =========================================================
 
+    public List<Usuario> listarPorEmpresaYRol(
+            UUID idEmpresa,
+            Integer idRol
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id_usuario, id_empresa, id_rol,
+                       usuario, nombres, activo,
+                       tipobloqueo, notificacion, correo
+                FROM usuario
+                WHERE id_empresa = ?
+                  AND id_rol = ?
+                  AND activo = TRUE
+                ORDER BY nombres
+                """;
+
+        List<Usuario> lista = new ArrayList<>();
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(1, idEmpresa);
+            ps.setInt(2, idRol);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    lista.add(mapearSeguro(rs));
+                }
+            }
+        }
+
+        return lista;
+    }
     public Optional<Usuario> buscarPorIdYEmpresa(
             UUID idUsuario,
             UUID idEmpresa
@@ -101,7 +145,8 @@ public class UsuarioDAO {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, nombres, activo, tipobloqueo, notificacion
+                       usuario, nombres, activo,
+                       tipobloqueo, notificacion, correo
                 FROM usuario
                 WHERE id_usuario = ?
                   AND id_empresa = ?
@@ -116,6 +161,7 @@ public class UsuarioDAO {
             ps.setObject(2, idEmpresa);
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 return rs.next()
                         ? Optional.of(mapearSeguro(rs))
                         : Optional.empty();
@@ -125,15 +171,16 @@ public class UsuarioDAO {
 
     // =========================================================
     // CONSULTAS INTERNAS CON HASH
-    // Solo deben usarse para autenticación/cambio de contraseña
     // =========================================================
 
-    public Optional<Usuario> buscarPorUsuarioParaLogin(String usuario)
-            throws SQLException {
+    public Optional<Usuario> buscarPorUsuarioParaLogin(
+            String usuario
+    ) throws SQLException {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, clave_hash, nombres, activo, tipobloqueo, notificacion
+                       usuario, clave_hash, nombres, activo,
+                       tipobloqueo, notificacion, correo
                 FROM usuario
                 WHERE LOWER(usuario) = LOWER(?)
                 """;
@@ -143,9 +190,13 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setString(1, usuario.trim());
+            ps.setString(
+                    1,
+                    usuario.trim()
+            );
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 return rs.next()
                         ? Optional.of(mapearConHash(rs))
                         : Optional.empty();
@@ -153,12 +204,14 @@ public class UsuarioDAO {
         }
     }
 
-    public Optional<Usuario> buscarPorIdConHash(UUID idUsuario)
-            throws SQLException {
+    public Optional<Usuario> buscarPorIdConHash(
+            UUID idUsuario
+    ) throws SQLException {
 
         String sql = """
                 SELECT id_usuario, id_empresa, id_rol,
-                       usuario, clave_hash, nombres, activo, tipobloqueo, notificacion
+                       usuario, clave_hash, nombres, activo,
+                       tipobloqueo, notificacion, correo
                 FROM usuario
                 WHERE id_usuario = ?
                 """;
@@ -168,9 +221,13 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setObject(1, idUsuario);
+            ps.setObject(
+                    1,
+                    idUsuario
+            );
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 return rs.next()
                         ? Optional.of(mapearConHash(rs))
                         : Optional.empty();
@@ -179,15 +236,129 @@ public class UsuarioDAO {
     }
 
     // =========================================================
+    // BUSCAR POR CORREO PARA RECUPERACIÓN
+    // =========================================================
+
+    public Optional<Usuario> buscarPorCorreo(
+            String correo
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id_usuario, id_empresa, id_rol,
+                       usuario, nombres, activo,
+                       tipobloqueo, notificacion, correo
+                FROM usuario
+                WHERE LOWER(TRIM(correo)) = LOWER(TRIM(?))
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    correo
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                return rs.next()
+                        ? Optional.of(mapearSeguro(rs))
+                        : Optional.empty();
+            }
+        }
+    }
+
+    // =========================================================
+    // VALIDAR CORREO DUPLICADO
+    // =========================================================
+
+    public boolean existeCorreo(
+            String correo
+    ) throws SQLException {
+
+        String sql = """
+                SELECT 1
+                FROM usuario
+                WHERE LOWER(TRIM(correo)) = LOWER(TRIM(?))
+                LIMIT 1
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    correo
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                return rs.next();
+            }
+        }
+    }
+
+    public boolean existeCorreoEnOtroUsuario(
+            String correo,
+            UUID idUsuario
+    ) throws SQLException {
+
+        String sql = """
+                SELECT 1
+                FROM usuario
+                WHERE LOWER(TRIM(correo)) = LOWER(TRIM(?))
+                  AND id_usuario <> ?
+                LIMIT 1
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    correo
+            );
+
+            ps.setObject(
+                    2,
+                    idUsuario
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                return rs.next();
+            }
+        }
+    }
+
+    // =========================================================
     // CREAR
     // =========================================================
 
-    public Usuario insertar(Usuario obj) throws SQLException {
+    public Usuario insertar(
+            Usuario obj
+    ) throws SQLException {
 
         String sql = """
                 INSERT INTO usuario
-                (id_empresa, id_rol, usuario, clave_hash, nombres, activo, tipobloqueo, notificacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (
+                    id_empresa,
+                    id_rol,
+                    usuario,
+                    clave_hash,
+                    nombres,
+                    activo,
+                    tipobloqueo,
+                    notificacion,
+                    correo
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING id_usuario
                 """;
 
@@ -196,25 +367,65 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setObject(1, obj.getIdEmpresa());
-            ps.setObject(2, obj.getIdRol());
-            ps.setString(3, obj.getUsuario());
-            ps.setString(4, obj.getClaveHash());
-            ps.setString(5, obj.getNombres());
-            ps.setBoolean(6, obj.isActivo());
-            ps.setString(7, obj.getTipobloqueo());
-            ps.setString(8, obj.getNotificacion());
+            ps.setObject(
+                    1,
+                    obj.getIdEmpresa()
+            );
+
+            ps.setObject(
+                    2,
+                    obj.getIdRol()
+            );
+
+            ps.setString(
+                    3,
+                    obj.getUsuario()
+            );
+
+            ps.setString(
+                    4,
+                    obj.getClaveHash()
+            );
+
+            ps.setString(
+                    5,
+                    obj.getNombres()
+            );
+
+            ps.setBoolean(
+                    6,
+                    obj.isActivo()
+            );
+
+            ps.setString(
+                    7,
+                    obj.getTipobloqueo()
+            );
+
+            ps.setString(
+                    8,
+                    obj.getNotificacion()
+            );
+
+            ps.setString(
+                    9,
+                    obj.getCorreo()
+            );
 
             try (ResultSet rs = ps.executeQuery()) {
 
                 if (!rs.next()) {
+
                     throw new SQLException(
                             "No se generó la clave primaria"
                     );
                 }
 
                 obj.setIdUsuario(
-                        rs.getObject("id_usuario", UUID.class)
+                        rs.getObject(
+                                "id_usuario",
+                                UUID.class
+                        )
                 );
             }
         }
@@ -226,8 +437,9 @@ public class UsuarioDAO {
     // ACTUALIZAR
     // =========================================================
 
-    public boolean actualizar(Usuario obj)
-            throws SQLException {
+    public boolean actualizar(
+            Usuario obj
+    ) throws SQLException {
 
         String sql = """
                 UPDATE usuario
@@ -238,7 +450,8 @@ public class UsuarioDAO {
                     nombres = ?,
                     activo = ?,
                     tipobloqueo = ?,
-                    notificacion = ?
+                    notificacion = ?,
+                    correo = ?
                 WHERE id_usuario = ?
                 """;
 
@@ -247,15 +460,55 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setObject(1, obj.getIdEmpresa());
-            ps.setObject(2, obj.getIdRol());
-            ps.setString(3, obj.getUsuario());
-            ps.setString(4, obj.getClaveHash());
-            ps.setString(5, obj.getNombres());
-            ps.setBoolean(6, obj.isActivo());
-            ps.setString(7, obj.getTipobloqueo());
-            ps.setString(8, obj.getNotificacion());
-            ps.setObject(9, obj.getIdUsuario());
+            ps.setObject(
+                    1,
+                    obj.getIdEmpresa()
+            );
+
+            ps.setObject(
+                    2,
+                    obj.getIdRol()
+            );
+
+            ps.setString(
+                    3,
+                    obj.getUsuario()
+            );
+
+            ps.setString(
+                    4,
+                    obj.getClaveHash()
+            );
+
+            ps.setString(
+                    5,
+                    obj.getNombres()
+            );
+
+            ps.setBoolean(
+                    6,
+                    obj.isActivo()
+            );
+
+            ps.setString(
+                    7,
+                    obj.getTipobloqueo()
+            );
+
+            ps.setString(
+                    8,
+                    obj.getNotificacion()
+            );
+
+            ps.setString(
+                    9,
+                    obj.getCorreo()
+            );
+
+            ps.setObject(
+                    10,
+                    obj.getIdUsuario()
+            );
 
             return ps.executeUpdate() > 0;
         }
@@ -274,7 +527,8 @@ public class UsuarioDAO {
                     nombres = ?,
                     activo = ?,
                     tipobloqueo = ?,
-                    notificacion = ?
+                    notificacion = ?,
+                    correo = ?
                 WHERE id_usuario = ?
                   AND id_empresa = ?
                 """;
@@ -284,15 +538,89 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setObject(1, obj.getIdRol());
-            ps.setString(2, obj.getUsuario());
-            ps.setString(3, obj.getClaveHash());
-            ps.setString(4, obj.getNombres());
-            ps.setBoolean(5, obj.isActivo());
-            ps.setString(6, obj.getTipobloqueo());
-            ps.setString(7, obj.getNotificacion());
-            ps.setObject(8, obj.getIdUsuario());
-            ps.setObject(9, idEmpresa);
+            ps.setObject(
+                    1,
+                    obj.getIdRol()
+            );
+
+            ps.setString(
+                    2,
+                    obj.getUsuario()
+            );
+
+            ps.setString(
+                    3,
+                    obj.getClaveHash()
+            );
+
+            ps.setString(
+                    4,
+                    obj.getNombres()
+            );
+
+            ps.setBoolean(
+                    5,
+                    obj.isActivo()
+            );
+
+            ps.setString(
+                    6,
+                    obj.getTipobloqueo()
+            );
+
+            ps.setString(
+                    7,
+                    obj.getNotificacion()
+            );
+
+            ps.setString(
+                    8,
+                    obj.getCorreo()
+            );
+
+            ps.setObject(
+                    9,
+                    obj.getIdUsuario()
+            );
+
+            ps.setObject(
+                    10,
+                    idEmpresa
+            );
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================================================
+    // CAMBIO DIRECTO DE CONTRASEÑA
+    // =========================================================
+
+    public boolean actualizarClave(
+            UUID idUsuario,
+            String nuevoHash
+    ) throws SQLException {
+
+        String sql = """
+                UPDATE usuario
+                SET clave_hash = ?
+                WHERE id_usuario = ?
+                """;
+
+        try (
+                Connection cn = ConexionBD.obtenerConexion();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    nuevoHash
+            );
+
+            ps.setObject(
+                    2,
+                    idUsuario
+            );
 
             return ps.executeUpdate() > 0;
         }
@@ -300,8 +628,6 @@ public class UsuarioDAO {
 
     // =========================================================
     // BLOQUEO / DESBLOQUEO
-    // Solo actualiza activo, tipobloqueo y notificacion.
-    // No toca clave_hash ni demás datos.
     // =========================================================
 
     public boolean actualizarBloqueo(
@@ -323,9 +649,20 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setBoolean(1, activo);
-            ps.setString(2, tipobloqueo);
-            ps.setObject(3, idUsuario);
+            ps.setBoolean(
+                    1,
+                    activo
+            );
+
+            ps.setString(
+                    2,
+                    tipobloqueo
+            );
+
+            ps.setObject(
+                    3,
+                    idUsuario
+            );
 
             return ps.executeUpdate() > 0;
         }
@@ -333,7 +670,6 @@ public class UsuarioDAO {
 
     // =========================================================
     // NOTIFICACIÓN DE BLOQUEO
-    // Solo actualiza notificacion; no toca activo ni tipobloqueo.
     // =========================================================
 
     public boolean actualizarNotificacion(
@@ -352,8 +688,15 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setString(1, notificacion);
-            ps.setObject(2, idUsuario);
+            ps.setString(
+                    1,
+                    notificacion
+            );
+
+            ps.setObject(
+                    2,
+                    idUsuario
+            );
 
             return ps.executeUpdate() > 0;
         }
@@ -363,8 +706,9 @@ public class UsuarioDAO {
     // ELIMINAR
     // =========================================================
 
-    public boolean eliminar(UUID idUsuario)
-            throws SQLException {
+    public boolean eliminar(
+            UUID idUsuario
+    ) throws SQLException {
 
         String sql = """
                 DELETE FROM usuario
@@ -376,7 +720,10 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setObject(1, idUsuario);
+            ps.setObject(
+                    1,
+                    idUsuario
+            );
 
             return ps.executeUpdate() > 0;
         }
@@ -398,8 +745,15 @@ public class UsuarioDAO {
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
 
-            ps.setObject(1, idUsuario);
-            ps.setObject(2, idEmpresa);
+            ps.setObject(
+                    1,
+                    idUsuario
+            );
+
+            ps.setObject(
+                    2,
+                    idEmpresa
+            );
 
             return ps.executeUpdate() > 0;
         }
@@ -409,56 +763,90 @@ public class UsuarioDAO {
     // MAPEO
     // =========================================================
 
-    private Usuario mapearSeguro(ResultSet rs)
-            throws SQLException {
+    private Usuario mapearSeguro(
+            ResultSet rs
+    ) throws SQLException {
 
-        Usuario obj = new Usuario();
+        Usuario obj =
+                new Usuario();
 
         obj.setIdUsuario(
-                rs.getObject("id_usuario", UUID.class)
+                rs.getObject(
+                        "id_usuario",
+                        UUID.class
+                )
         );
 
         obj.setIdEmpresa(
-                rs.getObject("id_empresa", UUID.class)
+                rs.getObject(
+                        "id_empresa",
+                        UUID.class
+                )
         );
 
         obj.setIdRol(
-                (Integer) rs.getObject("id_rol")
+                (Integer) rs.getObject(
+                        "id_rol"
+                )
         );
 
         obj.setUsuario(
-                rs.getString("usuario")
+                rs.getString(
+                        "usuario"
+                )
         );
 
         obj.setNombres(
-                rs.getString("nombres")
+                rs.getString(
+                        "nombres"
+                )
         );
 
         obj.setActivo(
-                (Boolean) rs.getObject("activo")
+                (Boolean) rs.getObject(
+                        "activo"
+                )
         );
 
         obj.setTipobloqueo(
-                rs.getString("tipobloqueo")
+                rs.getString(
+                        "tipobloqueo"
+                )
         );
 
         obj.setNotificacion(
-                rs.getString("notificacion")
+                rs.getString(
+                        "notificacion"
+                )
         );
 
-        // IMPORTANTE:
-        // claveHash queda null y no sale por la API.
+        obj.setCorreo(
+                rs.getString(
+                        "correo"
+                )
+        );
+
+        /*
+         * claveHash queda null
+         * en las consultas seguras.
+         */
 
         return obj;
     }
 
-    private Usuario mapearConHash(ResultSet rs)
-            throws SQLException {
+    private Usuario mapearConHash(
+            ResultSet rs
+    ) throws SQLException {
 
-        Usuario obj = mapearSeguro(rs);
+        Usuario obj =
+                mapearSeguro(
+                        rs
+                );
 
         obj.setClaveHash(
-                rs.getString("clave_hash")
+                rs.getString(
+                        "clave_hash"
+                )
         );
 
         return obj;

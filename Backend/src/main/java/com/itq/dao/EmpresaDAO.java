@@ -15,20 +15,21 @@ import java.util.UUID;
 public class EmpresaDAO {
 
     // =========================================================
-    // LISTAR TODAS LAS EMPRESAS
+    // LISTAR
     // =========================================================
 
     public List<Empresa> listar()
             throws SQLException {
 
         String sql = """
-                SELECT id_empresa,
-                       ruc,
-                       razon_social,
-                       direccion,
-                       correo,
-                       telefono,
-                       activo
+                SELECT
+                    id_empresa,
+                    ruc,
+                    razon_social,
+                    direccion,
+                    correo,
+                    telefono,
+                    activo
                 FROM empresa
                 ORDER BY razon_social
                 """;
@@ -64,13 +65,14 @@ public class EmpresaDAO {
     ) throws SQLException {
 
         String sql = """
-                SELECT id_empresa,
-                       ruc,
-                       razon_social,
-                       direccion,
-                       correo,
-                       telefono,
-                       activo
+                SELECT
+                    id_empresa,
+                    ruc,
+                    razon_social,
+                    direccion,
+                    correo,
+                    telefono,
+                    activo
                 FROM empresa
                 WHERE id_empresa = ?
                 """;
@@ -88,63 +90,139 @@ public class EmpresaDAO {
                     idEmpresa
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
-                return rs.next()
-                        ? Optional.of(mapear(rs))
-                        : Optional.empty();
+                if (rs.next()) {
+                    return Optional.of(
+                            mapear(rs)
+                    );
+                }
+
+                return Optional.empty();
             }
         }
     }
 
-
-            // ========= NUEVOS MÉTODOS =========
-
-            public boolean existeCorreo(String correo) throws SQLException {
-
-                String sql = """
-        SELECT 1
-        FROM empresa
-        WHERE correo = ?
-        LIMIT 1
-        """;
-                try (
-        Connection cn = ConexionBD.obtenerConexion();
-        PreparedStatement ps = cn.prepareStatement(sql)
-                ) {
-
-                    ps.setString(1, correo);
-
-                    try (ResultSet rs = ps.executeQuery()) {
-                        return rs.next();
-                    }
-                }
-            }
-            public boolean existeTelefono(String telefono) throws SQLException {
-
-                String sql = """
-        SELECT 1
-        FROM empresa
-        WHERE telefono = ?
-        LIMIT 1
-        """;
-                try (
-
-        Connection cn = ConexionBD.obtenerConexion();
-
-        PreparedStatement ps = cn.prepareStatement(sql)
-
-                ) {
-
-                    ps.setString(1, telefono);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        return rs.next();
-                    }
-                }
-            }
     // =========================================================
-    // CREAR
+    // COMPROBAR RUC REGISTRADO EN NUESTRO SISTEMA
+    // =========================================================
+
+    public boolean existeRuc(
+            String ruc
+    ) throws SQLException {
+
+        String sql = """
+                SELECT 1
+                FROM empresa
+                WHERE ruc = ?
+                LIMIT 1
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    ruc
+            );
+
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
+
+                return rs.next();
+            }
+        }
+    }
+
+    // =========================================================
+    // COMPROBAR CORREO
+    // =========================================================
+
+    public boolean existeCorreo(
+            String correo
+    ) throws SQLException {
+
+        String sql = """
+                SELECT 1
+                FROM empresa
+                WHERE LOWER(TRIM(correo))
+                      = LOWER(TRIM(?))
+                LIMIT 1
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    correo
+            );
+
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
+
+                return rs.next();
+            }
+        }
+    }
+
+    // =========================================================
+    // COMPROBAR TELÉFONO
+    // =========================================================
+
+    public boolean existeTelefono(
+            String telefono
+    ) throws SQLException {
+
+        String sql = """
+                SELECT 1
+                FROM empresa
+                WHERE TRIM(telefono) = TRIM(?)
+                LIMIT 1
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    telefono
+            );
+
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
+
+                return rs.next();
+            }
+        }
+    }
+
+    // =========================================================
+    // INSERTAR
     // =========================================================
 
     public Empresa insertar(
@@ -203,8 +281,10 @@ public class EmpresaDAO {
                     obj.isActivo()
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 if (!rs.next()) {
 
@@ -226,7 +306,7 @@ public class EmpresaDAO {
     }
 
     // =========================================================
-    // ACTUALIZAR DATOS
+    // ACTUALIZAR
     // =========================================================
 
     public boolean actualizar(
@@ -252,47 +332,20 @@ public class EmpresaDAO {
                         cn.prepareStatement(sql)
         ) {
 
-            ps.setString(
-                    1,
-                    obj.getRuc()
-            );
-
-            ps.setString(
-                    2,
-                    obj.getRazonSocial()
-            );
-
-            ps.setString(
-                    3,
-                    obj.getDireccion()
-            );
-
-            ps.setString(
-                    4,
-                    obj.getCorreo()
-            );
-
-            ps.setString(
-                    5,
-                    obj.getTelefono()
-            );
-
-            ps.setBoolean(
-                    6,
-                    obj.isActivo()
-            );
-
-            ps.setObject(
-                    7,
-                    obj.getIdEmpresa()
-            );
+            ps.setString(1, obj.getRuc());
+            ps.setString(2, obj.getRazonSocial());
+            ps.setString(3, obj.getDireccion());
+            ps.setString(4, obj.getCorreo());
+            ps.setString(5, obj.getTelefono());
+            ps.setBoolean(6, obj.isActivo());
+            ps.setObject(7, obj.getIdEmpresa());
 
             return ps.executeUpdate() > 0;
         }
     }
 
     // =========================================================
-    // ACTIVAR / DESACTIVAR
+    // CAMBIAR ESTADO
     // =========================================================
 
     public boolean cambiarEstado(
@@ -329,7 +382,7 @@ public class EmpresaDAO {
     }
 
     // =========================================================
-    // MAPEO
+    // MAPEAR
     // =========================================================
 
     private Empresa mapear(
@@ -347,7 +400,9 @@ public class EmpresaDAO {
         );
 
         obj.setRuc(
-                rs.getString("ruc")
+                rs.getString(
+                        "ruc"
+                )
         );
 
         obj.setRazonSocial(
@@ -363,16 +418,22 @@ public class EmpresaDAO {
         );
 
         obj.setCorreo(
-                rs.getString("correo")
+                rs.getString(
+                        "correo"
+                )
         );
 
         obj.setTelefono(
-                rs.getString("telefono")
+                rs.getString(
+                        "telefono"
+                )
         );
 
         obj.setActivo(
                 (Boolean)
-                        rs.getObject("activo")
+                        rs.getObject(
+                                "activo"
+                        )
         );
 
         return obj;

@@ -40,12 +40,52 @@ public class EmpresaServlet extends HttpServlet {
 
         try {
 
-            // Todo el módulo de empresas queda reservado
-            // exclusivamente para el SuperUsuario.
             exigirSuperUsuario(req);
 
             String[] partes =
                     partesRuta(req);
+
+            // =================================================
+            // GET /api/empresas/validar-ruc?ruc=XXXXXXXXXXXXX
+            // =================================================
+
+            if (partes.length == 1 &&
+                    partes[0].equalsIgnoreCase("validar-ruc")) {
+
+                Autorizacion.exigir(
+                        req,
+                        "EMPRESAS",
+                        "CREAR"
+                );
+
+                String ruc =
+                        req.getParameter("ruc");
+
+                if (ruc == null ||
+                        ruc.trim().isEmpty()) {
+
+                    HttpUtil.error(
+                            resp,
+                            400,
+                            "El parámetro RUC es obligatorio"
+                    );
+
+                    return;
+                }
+
+                HttpUtil.json(
+                        resp,
+                        200,
+                        ApiResponse.ok(
+                                "Validación de RUC",
+                                service.validarRuc(
+                                        ruc
+                                )
+                        )
+                );
+
+                return;
+            }
 
             // =================================================
             // GET /api/empresas
@@ -75,7 +115,7 @@ public class EmpresaServlet extends HttpServlet {
             // GET /api/empresas/{id}/resumen
             // =================================================
 
-            if (partes.length >= 2 &&
+            if (partes.length == 2 &&
                     partes[1].equalsIgnoreCase("resumen")) {
 
                 Autorizacion.exigir(
@@ -163,7 +203,10 @@ public class EmpresaServlet extends HttpServlet {
                 return;
             }
 
-            // Si llega una ruta no contemplada.
+            // =================================================
+            // RUTA NO ENCONTRADA
+            // =================================================
+
             HttpUtil.error(
                     resp,
                     404,
@@ -183,7 +226,9 @@ public class EmpresaServlet extends HttpServlet {
             HttpUtil.error(
                     resp,
                     400,
-                    "Identificador inválido"
+                    e.getMessage() == null
+                            ? "Datos inválidos"
+                            : e.getMessage()
             );
 
         } catch (SQLException e) {
@@ -198,128 +243,179 @@ public class EmpresaServlet extends HttpServlet {
 
             HttpUtil.error(
                     resp,
-                    500,
+                    503,
                     e.getMessage()
+            );
+
+        } catch (Exception e) {
+
+            HttpUtil.error(
+                    resp,
+                    500,
+                    "Error interno: " +
+                            e.getMessage()
             );
         }
     }
 
-        // =========================================================
-        // POST
-        // =========================================================
+    // =========================================================
+    // POST
+    // =========================================================
 
-        @Override
-        protected void doPost(
-                HttpServletRequest req,
-                HttpServletResponse resp
-        ) throws IOException {
+    @Override
+    protected void doPost(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws IOException {
 
-            try {
+        try {
 
-                exigirSuperUsuario(req);
+            exigirSuperUsuario(req);
 
-                Autorizacion.exigir(
-                        req,
-                        "EMPRESAS",
-                        "CREAR"
-                );
+            Autorizacion.exigir(
+                    req,
+                    "EMPRESAS",
+                    "CREAR"
+            );
 
-                EmpresaConAdminRequest request =
-                        JsonUtil.gson()
-                                .fromJson(
-                                        req.getReader(),
-                                        EmpresaConAdminRequest.class
-                                );
+            EmpresaConAdminRequest request =
+                    JsonUtil.gson()
+                            .fromJson(
+                                    req.getReader(),
+                                    EmpresaConAdminRequest.class
+                            );
 
-                if (request == null) {
-
-                    HttpUtil.error(
-                            resp,
-                            400,
-                            "Los datos de la empresa son obligatorios"
-                    );
-
-                    return;
-                }
-
-                /*
-                 * Alta completa: la empresa y su usuario administrador
-                 * se crean juntos en una transacción (crearConAdmin).
-                 */
-                Empresa creada =
-                        service.crearConAdmin(
-                                request
-                        );
-
-                HttpUtil.json(
-                        resp,
-                        201,
-                        ApiResponse.ok(
-                                "Empresa creada",
-                                creada
-                        )
-                );
-
-            } catch (SecurityException e) {
-
-                HttpUtil.error(
-                        resp,
-                        403,
-                        e.getMessage()
-                );
-
-            } catch (IllegalArgumentException e) {
+            if (request == null) {
 
                 HttpUtil.error(
                         resp,
                         400,
-                        e.getMessage()
+                        "Los datos de la empresa son obligatorios"
                 );
 
-            } catch (SQLException e) {
-
-                if (e.getMessage() != null &&
-                e.getMessage().contains("empresa_ruc_key")) {
-
-                    HttpUtil.error(
-                            resp,
-                            400,
-                            "Ya existe una empresa registrada con este RUC"
-
-                    );
-
-                    return;
-                }
-
-                HttpUtil.error(
-
-                        resp,
-
-                        SqlErrorUtil.estadoHttp(e),
-
-                        e.getMessage()
-
-                );
-
-
-            } catch (IllegalStateException e) {
-
-                HttpUtil.error(
-                        resp,
-                        500,
-                        e.getMessage()
-                );
-
-            } catch (Exception e) {
-
-                HttpUtil.error(
-                        resp,
-                        400,
-                        "JSON o datos inválidos: "
-                                + e.getMessage()
-                );
+                return;
             }
+
+            Empresa creada =
+                    service.crearConAdmin(
+                            request
+                    );
+
+            HttpUtil.json(
+                    resp,
+                    201,
+                    ApiResponse.ok(
+                            "Empresa creada",
+                            creada
+                    )
+            );
+
+        } catch (SecurityException e) {
+
+            HttpUtil.error(
+                    resp,
+                    403,
+                    e.getMessage()
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            HttpUtil.error(
+                    resp,
+                    400,
+                    e.getMessage()
+            );
+
+        } catch (SQLException e) {
+
+            String mensaje =
+                    e.getMessage();
+
+            // =================================================
+            // RUC DUPLICADO
+            // =================================================
+
+            if (mensaje != null &&
+                    (
+                            mensaje.contains("empresa_ruc_key") ||
+                                    mensaje.contains("ux_empresa_ruc")
+                    )) {
+
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "Ya existe una veterinaria registrada con este RUC"
+                );
+
+                return;
+            }
+
+            // =================================================
+            // CORREO DUPLICADO
+            // =================================================
+
+            if (mensaje != null &&
+                    (
+                            mensaje.contains("uk_empresa_correo") ||
+                                    mensaje.contains(
+                                            "ux_empresa_correo_normalizado"
+                                    )
+                    )) {
+
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "Ya existe una veterinaria registrada con este correo"
+                );
+
+                return;
+            }
+
+            // =================================================
+            // TELÉFONO DUPLICADO
+            // =================================================
+
+            if (mensaje != null &&
+                    (
+                            mensaje.contains("uk_empresa_telefono") ||
+                                    mensaje.contains(
+                                            "ux_empresa_telefono_normalizado"
+                                    )
+                    )) {
+
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "Ya existe una veterinaria registrada con este teléfono"
+                );
+
+                return;
+            }
+
+            HttpUtil.error(
+                    resp,
+                    SqlErrorUtil.estadoHttp(e),
+                    e.getMessage()
+            );
+
+        } catch (IllegalStateException e) {
+
+            HttpUtil.error(
+                    resp,
+                    503,
+                    e.getMessage()
+            );
+
+        } catch (Exception e) {
+
+            HttpUtil.error(
+                    resp,
+                    400,
+                    "JSON o datos inválidos: "
+                            + e.getMessage()
+            );
         }
+    }
 
     // =========================================================
     // PUT
@@ -431,6 +527,83 @@ public class EmpresaServlet extends HttpServlet {
             }
 
             // =================================================
+            // PUT /api/empresas/{id}/contrasena-admin
+            // =================================================
+
+            if (partes.length == 2 &&
+                    partes[1].equalsIgnoreCase(
+                            "contrasena-admin"
+                    )) {
+
+                Autorizacion.exigir(
+                        req,
+                        "EMPRESAS",
+                        "EDITAR"
+                );
+
+                CambiarContrasenaAdminRequest request =
+                        JsonUtil.gson()
+                                .fromJson(
+                                        req.getReader(),
+                                        CambiarContrasenaAdminRequest.class
+                                );
+
+                if (request == null) {
+
+                    HttpUtil.error(
+                            resp,
+                            400,
+                            "Los datos para cambiar la contraseña son obligatorios"
+                    );
+
+                    return;
+                }
+
+                if (request.getNuevaClave() == null ||
+                        request.getNuevaClave()
+                                .trim()
+                                .isEmpty()) {
+
+                    HttpUtil.error(
+                            resp,
+                            400,
+                            "La nueva contraseña es obligatoria"
+                    );
+
+                    return;
+                }
+
+                boolean actualizado =
+                        service
+                                .actualizarContrasenaAdministrador(
+                                        idEmpresa,
+                                        request.getNuevaClave()
+                                );
+
+                if (!actualizado) {
+
+                    HttpUtil.error(
+                            resp,
+                            404,
+                            "No se encontró el Administrador Local de esta veterinaria"
+                    );
+
+                    return;
+                }
+
+                HttpUtil.json(
+                        resp,
+                        200,
+                        ApiResponse.ok(
+                                "Contraseña del Administrador Local actualizada correctamente",
+                                null
+                        )
+                );
+
+                return;
+            }
+
+            // =================================================
             // PUT /api/empresas/{id}
             // =================================================
 
@@ -464,7 +637,9 @@ public class EmpresaServlet extends HttpServlet {
                         idEmpresa
                 );
 
-                if (!service.actualizar(obj)) {
+                if (!service.actualizar(
+                        obj
+                )) {
 
                     HttpUtil.error(
                             resp,
@@ -486,6 +661,10 @@ public class EmpresaServlet extends HttpServlet {
 
                 return;
             }
+
+            // =================================================
+            // RUTA NO ENCONTRADA
+            // =================================================
 
             HttpUtil.error(
                     resp,
@@ -509,20 +688,22 @@ public class EmpresaServlet extends HttpServlet {
                     "Datos inválidos: "
                             + e.getMessage()
             );
-/*
+
         } catch (SQLException e) {
 
-            HttpUtil.error(
-                    resp,
-                    SqlErrorUtil.estadoHttp(e),
-                    e.getMessage()
-            );
-*/
-        } catch (SQLException e) {
+            String mensaje =
+                    e.getMessage();
 
-            if (e.getMessage() != null
+            // =================================================
+            // RUC DUPLICADO
+            // =================================================
 
-                    && e.getMessage().contains("empresa_ruc_key")) {
+            if (mensaje != null &&
+                    (
+                            mensaje.contains("empresa_ruc_key") ||
+                                    mensaje.contains("ux_empresa_ruc")
+                    )) {
+
                 HttpUtil.error(
                         resp,
                         400,
@@ -531,24 +712,46 @@ public class EmpresaServlet extends HttpServlet {
 
                 return;
             }
-            if (e.getMessage() != null &&
 
-            e.getMessage().contains("uk_empresa_correo")) {
+            // =================================================
+            // CORREO DUPLICADO
+            // =================================================
+
+            if (mensaje != null &&
+                    (
+                            mensaje.contains("uk_empresa_correo") ||
+                                    mensaje.contains(
+                                            "ux_empresa_correo_normalizado"
+                                    )
+                    )) {
+
                 HttpUtil.error(
                         resp,
                         400,
                         "Ya existe una empresa registrada con este correo"
                 );
+
                 return;
             }
 
-            if (e.getMessage() != null &&
-            e.getMessage().contains("uk_empresa_telefono")) {
+            // =================================================
+            // TELÉFONO DUPLICADO
+            // =================================================
+
+            if (mensaje != null &&
+                    (
+                            mensaje.contains("uk_empresa_telefono") ||
+                                    mensaje.contains(
+                                            "ux_empresa_telefono_normalizado"
+                                    )
+                    )) {
+
                 HttpUtil.error(
                         resp,
                         400,
                         "Ya existe una empresa registrada con este teléfono"
                 );
+
                 return;
             }
 
@@ -617,7 +820,9 @@ public class EmpresaServlet extends HttpServlet {
 
         String rol =
                 (String)
-                        req.getAttribute("rol");
+                        req.getAttribute(
+                                "rol"
+                        );
 
         if (rol == null ||
                 !rol.equalsIgnoreCase(
@@ -633,11 +838,13 @@ public class EmpresaServlet extends HttpServlet {
     // =========================================================
     // PARSEO DE RUTA
     //
-    // /                      -> []
-    // /UUID                  -> [UUID]
-    // /UUID/resumen          -> [UUID, resumen]
-    // /UUID/activar          -> [UUID, activar]
-    // /UUID/desactivar       -> [UUID, desactivar]
+    // /                          -> []
+    // /validar-ruc               -> [validar-ruc]
+    // /UUID                      -> [UUID]
+    // /UUID/resumen              -> [UUID, resumen]
+    // /UUID/activar              -> [UUID, activar]
+    // /UUID/desactivar           -> [UUID, desactivar]
+    // /UUID/contrasena-admin     -> [UUID, contrasena-admin]
     // =========================================================
 
     private String[] partesRuta(
@@ -658,11 +865,13 @@ public class EmpresaServlet extends HttpServlet {
                 path.trim();
 
         if (limpio.startsWith("/")) {
+
             limpio =
                     limpio.substring(1);
         }
 
         if (limpio.endsWith("/")) {
+
             limpio =
                     limpio.substring(
                             0,
@@ -671,9 +880,30 @@ public class EmpresaServlet extends HttpServlet {
         }
 
         if (limpio.isBlank()) {
+
             return new String[0];
         }
 
         return limpio.split("/");
+    }
+
+    // =========================================================
+    // DTO INTERNO - CAMBIO DE CONTRASEÑA ADMIN
+    // =========================================================
+
+    private static class CambiarContrasenaAdminRequest {
+
+        private String nuevaClave;
+
+        public String getNuevaClave() {
+            return nuevaClave;
+        }
+
+        public void setNuevaClave(
+                String nuevaClave
+        ) {
+            this.nuevaClave =
+                    nuevaClave;
+        }
     }
 }

@@ -18,10 +18,11 @@ public class VeterinarioDAO {
     public List<Veterinario> listar() throws SQLException {
 
         String sql = """
-                SELECT v.id_veterinario, 
+                SELECT v.id_veterinario,
                        v.id_usuario,
-                       v.id_empresa, 
-                       v.especialidad, 
+                       v.id_empresa,
+                       v.codigo_veterinario,
+                       v.especialidad,
                        u.usuario,
                        u.nombres
                 FROM veterinario v
@@ -53,10 +54,11 @@ public class VeterinarioDAO {
             throws SQLException {
 
         String sql = """
-                SELECT v.id_veterinario, 
+                SELECT v.id_veterinario,
                        v.id_usuario,
-                       v.id_empresa, 
-                       v.especialidad, 
+                       v.id_empresa,
+                       v.codigo_veterinario,
+                       v.especialidad,
                        u.usuario,
                        u.nombres
                 FROM veterinario v
@@ -93,13 +95,14 @@ public class VeterinarioDAO {
             throws SQLException {
 
         String sql = """
-                SELECT v.id_veterinario, 
+                SELECT v.id_veterinario,
                        v.id_usuario,
-                       v.id_empresa, 
-                       v.especialidad, 
-                       u.usuario, 
+                       v.id_empresa,
+                       v.codigo_veterinario,
+                       v.especialidad,
+                       u.usuario,
                        u.nombres
-                FROM veterinario v 
+                FROM veterinario v
                 INNER JOIN usuario u ON u.id_usuario = v.id_usuario
                 WHERE v.id_veterinario = ?
                 """;
@@ -126,13 +129,14 @@ public class VeterinarioDAO {
     ) throws SQLException {
 
         String sql = """
-                SELECT v.id_veterinario, 
+                SELECT v.id_veterinario,
                        v.id_usuario,
-                       v.id_empresa, 
-                       v.especialidad, 
-                       u.usuario, 
+                       v.id_empresa,
+                       v.codigo_veterinario,
+                       v.especialidad,
+                       u.usuario,
                        u.nombres
-                FROM veterinario v 
+                FROM veterinario v
                 INNER JOIN usuario u ON u.id_usuario = v.id_usuario
                 WHERE v.id_veterinario = ?
                   AND v.id_empresa = ?
@@ -164,8 +168,8 @@ public class VeterinarioDAO {
 
         String sql = """
                 INSERT INTO veterinario
-                (id_usuario, id_empresa, especialidad)
-                VALUES (?, ?, ?)
+                (id_usuario, id_empresa, codigo_veterinario, especialidad)
+                VALUES (?, ?, ?, ?)
                 RETURNING id_veterinario
                 """;
 
@@ -176,7 +180,8 @@ public class VeterinarioDAO {
 
             ps.setObject(1, obj.getIdUsuario());
             ps.setObject(2, obj.getIdEmpresa());
-            ps.setString(3, obj.getEspecialidad());
+            ps.setString(3, obj.getCodigoVeterinario());
+            ps.setString(4, obj.getEspecialidad());
 
             try (ResultSet rs = ps.executeQuery()) {
 
@@ -206,9 +211,10 @@ public class VeterinarioDAO {
             throws SQLException {
 
         String sql = """
-                UPDATE veterinario 
+                UPDATE veterinario
                 SET id_usuario = ?,
                     id_empresa = ?,
+                    codigo_veterinario = ?,
                     especialidad = ?
                 WHERE id_veterinario = ?
                 """;
@@ -220,8 +226,9 @@ public class VeterinarioDAO {
 
             ps.setObject(1, obj.getIdUsuario());
             ps.setObject(2, obj.getIdEmpresa());
-            ps.setString(3, obj.getEspecialidad());
-            ps.setObject(4, obj.getIdVeterinario());
+            ps.setString(3, obj.getCodigoVeterinario());
+            ps.setString(4, obj.getEspecialidad());
+            ps.setObject(5, obj.getIdVeterinario());
 
             return ps.executeUpdate() > 0;
         }
@@ -233,8 +240,9 @@ public class VeterinarioDAO {
     ) throws SQLException {
 
         String sql = """
-                UPDATE veterinario 
+                UPDATE veterinario
                 SET id_usuario = ?,
+                    codigo_veterinario = ?,
                     especialidad = ?
                 WHERE id_veterinario = ?
                   AND id_empresa = ?
@@ -246,9 +254,10 @@ public class VeterinarioDAO {
         ) {
 
             ps.setObject(1, obj.getIdUsuario());
-            ps.setString(2, obj.getEspecialidad());
-            ps.setObject(3, obj.getIdVeterinario());
-            ps.setObject(4, idEmpresa);
+            ps.setString(2, obj.getCodigoVeterinario());
+            ps.setString(3, obj.getEspecialidad());
+            ps.setObject(4, obj.getIdVeterinario());
+            ps.setObject(5, idEmpresa);
 
             return ps.executeUpdate() > 0;
         }
@@ -262,7 +271,7 @@ public class VeterinarioDAO {
             throws SQLException {
 
         String sql = """
-                DELETE FROM veterinario 
+                DELETE FROM veterinario
                 WHERE id_veterinario = ?
                 """;
 
@@ -330,9 +339,14 @@ public class VeterinarioDAO {
                 )
         );
 
+        obj.setCodigoVeterinario(
+                rs.getString("codigo_veterinario")
+        );
+
         obj.setEspecialidad(
                 rs.getString("especialidad")
         );
+
         obj.setUsuario(
                 rs.getString("usuario")
         );
@@ -340,6 +354,7 @@ public class VeterinarioDAO {
         obj.setNombres(
                 rs.getString("nombres")
         );
+
         return obj;
     }
 }

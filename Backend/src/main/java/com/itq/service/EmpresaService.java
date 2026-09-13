@@ -3,6 +3,7 @@ package com.itq.service;
 import com.itq.config.ConexionBD;
 import com.itq.dao.EmpresaDAO;
 import com.itq.dto.EmpresaConAdminRequest;
+import com.itq.dto.ValidacionRucResponse;
 import com.itq.model.Empresa;
 import com.itq.util.PasswordUtil;
 import com.itq.validation.EcuadorValidator;
@@ -20,6 +21,9 @@ public class EmpresaService {
 
     private final EmpresaDAO dao =
             new EmpresaDAO();
+
+    private final RucSriService rucSriService =
+            new RucSriService();
 
     private static final Pattern PATRON_CORREO =
             Pattern.compile(
@@ -57,7 +61,103 @@ public class EmpresaService {
     }
 
     // =========================================================
-    // CREAR
+    // VALIDAR RUC PARA EL FRONTEND
+    // =========================================================
+
+    public ValidacionRucResponse validarRuc(
+            String ruc
+    ) throws SQLException {
+
+        if (vacio(ruc)) {
+
+            return new ValidacionRucResponse(
+                    null,
+                    false,
+                    false,
+                    false,
+                    false,
+                    "El RUC es obligatorio"
+            );
+        }
+
+        String rucLimpio =
+                EcuadorValidator.limpiarNumero(
+                        ruc
+                );
+
+        if (rucLimpio == null ||
+                rucLimpio.length() != 13) {
+
+            return new ValidacionRucResponse(
+                    rucLimpio,
+                    false,
+                    false,
+                    false,
+                    false,
+                    "El RUC debe contener 13 dígitos"
+            );
+        }
+
+        if (!EcuadorValidator.rucValido(
+                rucLimpio
+        )) {
+
+            return new ValidacionRucResponse(
+                    rucLimpio,
+                    false,
+                    false,
+                    false,
+                    false,
+                    "El RUC ecuatoriano no es válido"
+            );
+        }
+
+        boolean registrado =
+                dao.existeRuc(
+                        rucLimpio
+                );
+
+        if (registrado) {
+
+            return new ValidacionRucResponse(
+                    rucLimpio,
+                    true,
+                    true,
+                    true,
+                    false,
+                    "El RUC ya se encuentra registrado en el sistema"
+            );
+        }
+
+        boolean existeEnSri =
+                rucSriService.existeEnSri(
+                        rucLimpio
+                );
+
+        if (!existeEnSri) {
+
+            return new ValidacionRucResponse(
+                    rucLimpio,
+                    true,
+                    false,
+                    false,
+                    false,
+                    "El RUC es válido, pero no consta registrado en el SRI"
+            );
+        }
+
+        return new ValidacionRucResponse(
+                rucLimpio,
+                true,
+                true,
+                false,
+                true,
+                "RUC válido, registrado en el SRI y disponible"
+        );
+    }
+
+    // =========================================================
+    // CREAR EMPRESA
     // =========================================================
 
     public Empresa crear(
@@ -71,29 +171,29 @@ public class EmpresaService {
             );
         }
 
-        /*
-         * Toda veterinaria nueva queda activa
-         * por defecto.
-         */
         if (obj.isActivo() == null) {
-
             obj.setActivo(true);
         }
 
         validar(obj);
 
-        return dao.insertar(obj);
+        validarRucParaCreacion(
+                obj.getRuc()
+        );
+
+        validarDuplicados(
+                obj
+        );
+
+        return dao.insertar(
+                obj
+        );
     }
 
     // =========================================================
-    // CREAR CON ADMINISTRADOR
+    // CREAR EMPRESA + ADMINISTRADOR
     // =========================================================
 
-    /*
-     * Alta completa de una veterinaria: crea la empresa y su usuario
-     * administrador ("Administrador Local") en UNA transacción, de modo
-     * que si falla la creación del usuario no queda la empresa huérfana.
-     */
     public Empresa crearConAdmin(
             EmpresaConAdminRequest request
     ) throws SQLException {
@@ -132,46 +232,39 @@ public class EmpresaService {
                 request.getActivo()
         );
 
-        /*
-         * Toda veterinaria nueva queda activa
-         * por defecto.
-         */
         if (empresa.isActivo() == null) {
-
             empresa.setActivo(true);
         }
 
-        validar(empresa);
+        // Validación de estructura y datos básicos.
+        validar(
+                empresa
+        );
 
-        validarAdmin(request);
+        // Valida:
+        // 1. que no esté en nuestra BD
+        // 2. que exista oficialmente en SRI
+        validarRucParaCreacion(
+                empresa.getRuc()
+        );
 
-        if (
+        // Evita correo/teléfono duplicado.
+        validarDuplicados(
+                empresa
+        );
 
-        empresa.getCorreo() != null
+        validarAdmin(
+                request
+        );
 
-                && !empresa.getCorreo().isBlank()
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion()
+        ) {
 
-                && dao.existeCorreo(empresa.getCorreo())
-            ) {
-            throw new IllegalArgumentException(
-                    "Ya existe una empresa registrada con este correo electrónico"
+            cn.setAutoCommit(
+                    false
             );
-        }
-        if (
-        empresa.getTelefono() != null
-                && !empresa.getTelefono().isBlank()
-                && dao.existeTelefono(empresa.getTelefono())
-
-            ) {
-            throw new IllegalArgumentException(
-                    "Ya existe una empresa registrada con este número de teléfono"
-            );
-        }
-
-        try (Connection cn =
-                     ConexionBD.obtenerConexion()) {
-
-            cn.setAutoCommit(false);
 
             try {
 
@@ -186,18 +279,21 @@ public class EmpresaService {
                 );
 
                 Integer idRolAdmin =
-                        buscarRolAdministrador(cn);
+                        buscarRolAdministrador(
+                                cn
+                        );
 
                 if (idRolAdmin == null) {
 
                     throw new IllegalArgumentException(
-                            "No se encontró el rol de administrador en la base de datos"
+                            "No se encontró el rol Administrador Local"
                     );
                 }
 
                 String hash =
                         PasswordUtil.hash(
-                                request.getAdminContrasena()
+                                request
+                                        .getAdminContrasena()
                                         .trim()
                         );
 
@@ -243,9 +339,76 @@ public class EmpresaService {
             } finally {
 
                 try {
-                    cn.setAutoCommit(true);
+                    cn.setAutoCommit(
+                            true
+                    );
                 } catch (SQLException ignored) {
                 }
+            }
+        }
+    }
+
+    // =========================================================
+    // VALIDAR RUC PARA CREACIÓN
+    // =========================================================
+
+    private void validarRucParaCreacion(
+            String ruc
+    ) throws SQLException {
+
+        if (dao.existeRuc(ruc)) {
+
+            throw new IllegalArgumentException(
+                    "Ya existe una veterinaria registrada con este RUC"
+            );
+        }
+
+        boolean existeEnSri =
+                rucSriService.existeEnSri(
+                        ruc
+                );
+
+        if (!existeEnSri) {
+
+            throw new IllegalArgumentException(
+                    "El RUC no consta registrado en el SRI"
+            );
+        }
+    }
+
+    // =========================================================
+    // DUPLICADOS
+    // =========================================================
+
+    private void validarDuplicados(
+            Empresa empresa
+    ) throws SQLException {
+
+        if (!vacio(
+                empresa.getCorreo()
+        )) {
+
+            if (dao.existeCorreo(
+                    empresa.getCorreo()
+            )) {
+
+                throw new IllegalArgumentException(
+                        "Ya existe una veterinaria registrada con este correo electrónico"
+                );
+            }
+        }
+
+        if (!vacio(
+                empresa.getTelefono()
+        )) {
+
+            if (dao.existeTelefono(
+                    empresa.getTelefono()
+            )) {
+
+                throw new IllegalArgumentException(
+                        "Ya existe una veterinaria registrada con este número de teléfono"
+                );
             }
         }
     }
@@ -266,9 +429,99 @@ public class EmpresaService {
             );
         }
 
-        validar(obj);
+        validar(
+                obj
+        );
 
-        return dao.actualizar(obj);
+        return dao.actualizar(
+                obj
+        );
+    }
+
+    // =========================================================
+    // CAMBIAR CONTRASEÑA DEL ADMINISTRADOR LOCAL
+    // =========================================================
+
+    public boolean actualizarContrasenaAdministrador(
+            UUID idEmpresa,
+            String nuevaClave
+    ) throws SQLException {
+
+        if (idEmpresa == null) {
+
+            throw new IllegalArgumentException(
+                    "La veterinaria es obligatoria"
+            );
+        }
+
+        if (vacio(nuevaClave)) {
+
+            throw new IllegalArgumentException(
+                    "La nueva contraseña es obligatoria"
+            );
+        }
+
+        String claveLimpia =
+                nuevaClave.trim();
+
+        if (claveLimpia.length() < 6) {
+
+            throw new IllegalArgumentException(
+                    "La contraseña debe tener al menos 6 caracteres"
+            );
+        }
+
+        if (dao.buscarPorId(idEmpresa).isEmpty()) {
+
+            throw new IllegalArgumentException(
+                    "La veterinaria no existe"
+            );
+        }
+
+        String hash =
+                PasswordUtil.hash(
+                        claveLimpia
+                );
+
+        String sql = """
+                UPDATE usuario
+                SET clave_hash = ?
+                WHERE id_usuario = (
+                    SELECT u.id_usuario
+                    FROM usuario u
+                    INNER JOIN rol r
+                        ON r.id_rol = u.id_rol
+                    WHERE u.id_empresa = ?
+                      AND UPPER(r.nombre) = UPPER(?)
+                    LIMIT 1
+                )
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    hash
+            );
+
+            ps.setObject(
+                    2,
+                    idEmpresa
+            );
+
+            ps.setString(
+                    3,
+                    "Administrador Local"
+            );
+
+            return ps.executeUpdate() == 1;
+        }
     }
 
     // =========================================================
@@ -314,33 +567,22 @@ public class EmpresaService {
     }
 
     // =========================================================
-    // VALIDACIONES
+    // VALIDAR DATOS EMPRESA
     // =========================================================
 
     private void validar(
             Empresa obj
     ) {
 
-        // -----------------------------------------------------
-        // RUC obligatorio
-        // -----------------------------------------------------
-
-        if (vacio(obj.getRuc())) {
+        if (vacio(
+                obj.getRuc()
+        )) {
 
             throw new IllegalArgumentException(
                     "El RUC es obligatorio"
             );
         }
 
-        /*
-         * Limpiamos espacios, guiones u otros caracteres
-         * antes de validar.
-         *
-         * Ejemplo:
-         * 1792457812-001
-         * se convierte a:
-         * 1792457812001
-         */
         String rucLimpio =
                 EcuadorValidator.limpiarNumero(
                         obj.getRuc()
@@ -354,13 +596,6 @@ public class EmpresaService {
             );
         }
 
-        /*
-         * Validación ecuatoriana:
-         * - provincia
-         * - tercer dígito
-         * - dígito verificador
-         * - establecimiento
-         */
         if (!EcuadorValidator.rucValido(
                 rucLimpio
         )) {
@@ -370,14 +605,9 @@ public class EmpresaService {
             );
         }
 
-        // Guardamos siempre el RUC normalizado.
         obj.setRuc(
                 rucLimpio
         );
-
-        // -----------------------------------------------------
-        // RAZÓN SOCIAL
-        // -----------------------------------------------------
 
         if (vacio(
                 obj.getRazonSocial()
@@ -388,10 +618,6 @@ public class EmpresaService {
             );
         }
 
-        // -----------------------------------------------------
-        // DIRECCIÓN
-        // -----------------------------------------------------
-
         if (vacio(
                 obj.getDireccion()
         )) {
@@ -401,20 +627,12 @@ public class EmpresaService {
             );
         }
 
-        // -----------------------------------------------------
-        // ESTADO
-        // -----------------------------------------------------
-
         if (obj.isActivo() == null) {
 
             throw new IllegalArgumentException(
                     "El estado activo es obligatorio"
             );
         }
-
-        // -----------------------------------------------------
-        // NORMALIZACIÓN
-        // -----------------------------------------------------
 
         obj.setRazonSocial(
                 obj.getRazonSocial()
@@ -427,7 +645,7 @@ public class EmpresaService {
         );
 
         // -----------------------------------------------------
-        // CORREO (opcional)
+        // CORREO
         // -----------------------------------------------------
 
         if (!vacio(
@@ -451,10 +669,16 @@ public class EmpresaService {
             obj.setCorreo(
                     correo
             );
+
+        } else {
+
+            obj.setCorreo(
+                    null
+            );
         }
 
         // -----------------------------------------------------
-        // TELÉFONO (opcional)
+        // TELÉFONO
         // -----------------------------------------------------
 
         if (!vacio(
@@ -478,11 +702,17 @@ public class EmpresaService {
             obj.setTelefono(
                     telefono
             );
+
+        } else {
+
+            obj.setTelefono(
+                    null
+            );
         }
     }
 
     // =========================================================
-    // VALIDAR ADMINISTRADOR
+    // VALIDAR ADMIN
     // =========================================================
 
     private void validarAdmin(
@@ -516,7 +746,8 @@ public class EmpresaService {
             );
         }
 
-        if (request.getAdminContrasena()
+        if (request
+                .getAdminContrasena()
                 .trim()
                 .length() < 6) {
 
@@ -527,7 +758,7 @@ public class EmpresaService {
     }
 
     // =========================================================
-    // INSERTAR EMPRESA (MISMA CONEXIÓN)
+    // INSERTAR EMPRESA EN TRANSACCIÓN
     // =========================================================
 
     private UUID insertarEmpresa(
@@ -549,8 +780,10 @@ public class EmpresaService {
                 RETURNING id_empresa
                 """;
 
-        try (PreparedStatement ps =
-                     cn.prepareStatement(sql)) {
+        try (
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
 
             ps.setString(
                     1,
@@ -582,8 +815,10 @@ public class EmpresaService {
                     empresa.isActivo()
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
                 if (!rs.next()) {
 
@@ -601,7 +836,7 @@ public class EmpresaService {
     }
 
     // =========================================================
-    // ROL ADMINISTRADOR DE UNA VETERINARIA
+    // BUSCAR ROL ADMINISTRADOR LOCAL
     // =========================================================
 
     private Integer buscarRolAdministrador(
@@ -614,28 +849,36 @@ public class EmpresaService {
                 WHERE UPPER(nombre) = UPPER(?)
                 """;
 
-        try (PreparedStatement ps =
-                     cn.prepareStatement(sql)) {
+        try (
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
 
             ps.setString(
                     1,
                     "Administrador Local"
             );
 
-            try (ResultSet rs =
-                         ps.executeQuery()) {
+            try (
+                    ResultSet rs =
+                            ps.executeQuery()
+            ) {
 
-                return rs.next()
-                        ? (Integer) rs.getObject(
-                        "id_rol"
-                )
-                        : null;
+                if (rs.next()) {
+
+                    return (Integer)
+                            rs.getObject(
+                                    "id_rol"
+                            );
+                }
+
+                return null;
             }
         }
     }
 
     // =========================================================
-    // INSERTAR USUARIO ADMINISTRADOR (MISMA CONEXIÓN)
+    // INSERTAR ADMIN
     // =========================================================
 
     private void insertarUsuarioAdmin(
@@ -659,8 +902,10 @@ public class EmpresaService {
                 VALUES (?, ?, ?, ?, ?, TRUE)
                 """;
 
-        try (PreparedStatement ps =
-                     cn.prepareStatement(sql)) {
+        try (
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
 
             ps.setObject(
                     1,
@@ -674,7 +919,8 @@ public class EmpresaService {
 
             ps.setString(
                     3,
-                    request.getAdminUsuario()
+                    request
+                            .getAdminUsuario()
                             .trim()
             );
 
@@ -685,7 +931,8 @@ public class EmpresaService {
 
             ps.setString(
                     5,
-                    request.getAdminNombres()
+                    request
+                            .getAdminNombres()
                             .trim()
             );
 
