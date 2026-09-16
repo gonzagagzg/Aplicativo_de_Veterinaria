@@ -1,10 +1,29 @@
 import { useMutation } from '@tanstack/react-query'
 import { api } from './client'
-import type { LoginRequest, LoginResponse } from '@/shared/types/api'
+import type {
+  LoginRequest,
+  LoginResponse,
+  RecuperarPasswordRequest,
+  RestablecerPasswordRequest,
+} from '@/shared/types/api'
 
 /** POST /api/auth/login — único endpoint público, sin Authorization. */
 export function useLogin() {
   return useMutation<LoginResponse, Error, LoginRequest>({
     mutationFn: (credenciales) => api.post<LoginResponse>('/api/auth/login', credenciales),
+  })
+}
+
+/** POST /api/auth/recuperar-password — envía el correo con el token de recuperación. */
+export function useRecuperarPassword() {
+  return useMutation<void, Error, RecuperarPasswordRequest>({
+    mutationFn: (datos) => api.post<void>('/api/auth/recuperar-password', datos),
+  })
+}
+
+/** POST /api/auth/restablecer-password — consume el token y fija la nueva clave. */
+export function useRestablecerPassword() {
+  return useMutation<void, Error, RestablecerPasswordRequest>({
+    mutationFn: (datos) => api.post<void>('/api/auth/restablecer-password', datos),
   })
 }

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { Boton, Campo, Input, MensajeError, Select, TextArea } from '../ui'
+import { Boton, Campo, Input, InputContrasena, MensajeError, Select, TextArea } from '../ui'
 import { aInputDateTime, desdeInputDateTime } from '@/shared/lib/utils'
 import type { CampoFormulario } from './tipos'
 
@@ -146,6 +146,12 @@ export function FormularioCrud<T extends object>({
                     <option value="true">Sí</option>
                     <option value="false">No</option>
                   </Select>
+                ) : campo.tipo === 'contrasena' ? (
+                  <InputContrasena
+                    disabled={bloqueado}
+                    placeholder={campo.placeholder}
+                    {...register(campo.nombre, reglas)}
+                  />
                 ) : (
                   <Input
                     type={

@@ -10,6 +10,7 @@ export type TipoCampo =
   | 'textarea'
   | 'select'
   | 'booleano'
+  | 'contrasena'
 
 export interface OpcionSelect {
   valor: string | number

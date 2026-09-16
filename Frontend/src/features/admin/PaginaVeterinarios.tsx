@@ -2,15 +2,17 @@ import { useMemo } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PaginaCrud } from '@/shared/components/crud/PaginaCrud'
 import { indexarPor } from '@/shared/lib/utils'
-import { usuariosApi, veterinariosApi } from '@/shared/api/recursos'
-import { filtrarPorEmpresa, useSesion } from '@/shared/session/sesion'
+import { useVeterinariosDisponibles, usuariosApi, veterinariosApi } from '@/shared/api/recursos'
 import type { Veterinario } from '@/shared/types/api'
 
 export function PaginaVeterinarios() {
-  const idEmpresa = useSesion((s) => s.idEmpresa)
-
+  // GET /api/usuarios/veterinarios-disponibles ya filtra en el backend por
+  // rol Veterinario, empresa del JWT y que no estén vinculados todavía: se
+  // usa solo para poblar el selector de alta. Para mostrar nombre/usuario en
+  // la tabla de veterinarios ya creados se necesita el listado completo,
+  // porque esos usuarios ya no aparecen entre los "disponibles".
   const usuarios = usuariosApi.useLista()
-  const veterinarios = veterinariosApi.useLista()
+  const usuariosDisponibles = useVeterinariosDisponibles()
 
   const porUsuario = useMemo(() => indexarPor(usuarios.data, 'idUsuario'), [usuarios.data])
 
@@ -26,16 +28,10 @@ export function PaginaVeterinarios() {
         header: 'Usuario',
         accessorFn: (v) => porUsuario.get(v.idUsuario)?.usuario ?? '—',
       },
+      { accessorKey: 'codigoVeterinario', header: 'Código' },
       { accessorKey: 'especialidad', header: 'Especialidad' },
     ],
     [porUsuario],
-  )
-
-  // La BD impone id_usuario UNIQUE (relación 1:1), así que solo se ofrecen
-  // usuarios de la empresa que todavía no están vinculados a un veterinario.
-  const yaVinculados = new Set((veterinarios.data ?? []).map((v) => v.idUsuario))
-  const usuariosDisponibles = filtrarPorEmpresa(usuarios.data, idEmpresa).filter(
-    (u) => u.activo && !yaVinculados.has(u.idUsuario),
   )
 
   return (
@@ -54,11 +50,20 @@ export function PaginaVeterinarios() {
           tipo: 'select',
           requerido: true,
           soloCreacion: true,
-          ayuda: 'Relación 1 a 1: cada usuario puede ser un único veterinario',
-          opciones: usuariosDisponibles.map((u) => ({
+          ayuda: 'Solo usuarios con rol Veterinario de tu empresa, aún sin vincular',
+          opciones: (usuariosDisponibles.data ?? []).map((u) => ({
             valor: u.idUsuario,
             etiqueta: `${u.nombres} (${u.usuario})`,
           })),
+        },
+        {
+          nombre: 'codigoVeterinario',
+          etiqueta: 'Código de veterinario',
+          tipo: 'texto',
+          requerido: true,
+          maxLength: 50,
+          placeholder: 'VET-001',
+          ayuda: 'Único dentro de esta veterinaria',
         },
         {
           nombre: 'especialidad',

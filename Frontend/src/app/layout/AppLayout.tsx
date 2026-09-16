@@ -34,6 +34,10 @@ interface ItemNav {
    */
   modulo: string | null
   soloSuperUsuario?: boolean
+  /** GET /api/mensualidades resuelve la empresa desde el JWT del Administrador
+   * Local; el SuperUsuario no tiene una empresa propia, así que este ítem no
+   * le aplica (ver mensualidadesApi.useMisMensualidades). */
+  ocultoParaSuperUsuario?: boolean
 }
 
 const SECCIONES: { titulo: string; items: ItemNav[] }[] = [
@@ -55,6 +59,18 @@ const SECCIONES: { titulo: string; items: ItemNav[] }[] = [
       },
       { ruta: '/app/vacunacion', etiqueta: 'Vacunación', Icono: Syringe, modulo: 'MASCOTAS' },
       { ruta: '/app/recetas', etiqueta: 'Recetas', Icono: ClipboardList, modulo: null },
+    ],
+  },
+  {
+    titulo: 'Cuenta',
+    items: [
+      {
+        ruta: '/app/mensualidades',
+        etiqueta: 'Mensualidades',
+        Icono: Receipt,
+        modulo: 'MENSUALIDADES',
+        ocultoParaSuperUsuario: true,
+      },
     ],
   },
   {
@@ -98,6 +114,7 @@ export function AppLayout() {
     ...seccion,
     items: seccion.items.filter((item) => {
       if (item.soloSuperUsuario) return esSuper
+      if (item.ocultoParaSuperUsuario && esSuper) return false
       if (item.modulo === null) return true
       return permisos.tieneAccesoAModulo(item.modulo)
     }),
