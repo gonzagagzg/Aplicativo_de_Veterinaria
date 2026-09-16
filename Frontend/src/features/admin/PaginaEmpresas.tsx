@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { BarChart3, Building2, Eye, EyeOff, Pencil, Plus, Power, PowerOff, Users } from 'lucide-react'
+import {
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  KeyRound,
+  Pencil,
+  Plus,
+  Power,
+  PowerOff,
+  Users,
+  XCircle,
+} from 'lucide-react'
 import { TablaDatos } from '@/shared/components/TablaDatos'
 import {
   Badge,
@@ -9,6 +20,7 @@ import {
   Campo,
   Cargando,
   Input,
+  InputContrasena,
   MensajeError,
   Modal,
 } from '@/shared/components/ui'
@@ -171,8 +183,6 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
   const [adminNombres, setAdminNombres] = useState('')
   const [adminContrasena, setAdminContrasena] = useState('')
   const [confirmarContrasena, setConfirmarContrasena] = useState('')
-  const [mostrarContrasena, setMostrarContrasena] = useState(false)
-  const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
 
   function cerrarYLimpiar() {
     setRuc('')
@@ -184,15 +194,23 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
     setAdminNombres('')
     setAdminContrasena('')
     setConfirmarContrasena('')
-    setMostrarContrasena(false)
-    setMostrarConfirmar(false)
     crear.reset()
     onCerrar()
   }
 
   const rucCompleto = ruc.length === 13
   const rucValido = rucCompleto && rucEcuatorianoValido(ruc)
-  const errorRuc = rucCompleto && !rucValido ? 'El RUC ecuatoriano no es válido' : undefined
+  const errorRucFormato = rucCompleto && !rucValido ? 'El RUC ecuatoriano no es válido' : undefined
+
+  // Validación real contra el backend (formato + existencia SRI +
+  // disponibilidad) — solo se dispara cuando el formato local ya es válido,
+  // para no gastar la consulta al SRI con RUCs mal escritos.
+  const validacionRuc = empresaAdminApi.useValidarRuc(rucValido ? ruc : undefined)
+  const rucUtilizable =
+    rucValido &&
+    validacionRuc.data?.formatoValido &&
+    validacionRuc.data?.existeEnSri &&
+    validacionRuc.data?.disponibleParaRegistro
 
   const contrasenaCorta = adminContrasena.length > 0 && adminContrasena.length < 6
   const noCoincide =
@@ -223,7 +241,12 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Datos de la veterinaria
           </p>
-          <Campo etiqueta="RUC" requerido ayuda="13 dígitos, RUC ecuatoriano (validación SRI)" error={errorRuc}>
+          <Campo
+            etiqueta="RUC"
+            requerido
+            ayuda="13 dígitos. Se valida formato, existencia real (SRI) y disponibilidad."
+            error={errorRucFormato}
+          >
             <Input
               value={ruc}
               onChange={(e) => setRuc(e.target.value.replace(/\D/g, ''))}
@@ -232,6 +255,29 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
               required
             />
           </Campo>
+          {rucValido && (
+            <div className="text-xs">
+              {validacionRuc.isFetching ? (
+                <span className="text-slate-400">Verificando RUC en el SRI…</span>
+              ) : validacionRuc.error ? (
+                <span className="flex items-center gap-1.5 text-red-600">
+                  <XCircle className="h-3.5 w-3.5" /> No se pudo validar el RUC.
+                </span>
+              ) : validacionRuc.data && !validacionRuc.data.existeEnSri ? (
+                <span className="flex items-center gap-1.5 text-red-600">
+                  <XCircle className="h-3.5 w-3.5" /> El RUC no existe en el SRI.
+                </span>
+              ) : validacionRuc.data && !validacionRuc.data.disponibleParaRegistro ? (
+                <span className="flex items-center gap-1.5 text-red-600">
+                  <XCircle className="h-3.5 w-3.5" /> Este RUC ya está registrado.
+                </span>
+              ) : validacionRuc.data?.existeEnSri && validacionRuc.data?.disponibleParaRegistro ? (
+                <span className="flex items-center gap-1.5 text-emerald-600">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> RUC válido y disponible.
+                </span>
+              ) : null}
+            </div>
+          )}
           <Campo etiqueta="Razón social" requerido>
             <Input
               value={razonSocial}
@@ -297,50 +343,24 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
             ayuda="Mínimo 6 caracteres. El backend la cifra con BCrypt."
             error={contrasenaCorta ? 'La contraseña debe tener al menos 6 caracteres' : undefined}
           >
-            <div className="relative">
-              <Input
-                type={mostrarContrasena ? 'text' : 'password'}
-                value={adminContrasena}
-                onChange={(e) => setAdminContrasena(e.target.value)}
-                maxLength={255}
-                required
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarContrasena((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
-                tabIndex={-1}
-                aria-label={mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              >
-                {mostrarContrasena ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+            <InputContrasena
+              value={adminContrasena}
+              onChange={(e) => setAdminContrasena(e.target.value)}
+              maxLength={255}
+              required
+            />
           </Campo>
           <Campo
             etiqueta="Confirmar contraseña"
             requerido
             error={noCoincide ? 'Las contraseñas no coinciden' : undefined}
           >
-            <div className="relative">
-              <Input
-                type={mostrarConfirmar ? 'text' : 'password'}
-                value={confirmarContrasena}
-                onChange={(e) => setConfirmarContrasena(e.target.value)}
-                maxLength={255}
-                required
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarConfirmar((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
-                tabIndex={-1}
-                aria-label={mostrarConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              >
-                {mostrarConfirmar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+            <InputContrasena
+              value={confirmarContrasena}
+              onChange={(e) => setConfirmarContrasena(e.target.value)}
+              maxLength={255}
+              required
+            />
           </Campo>
         </div>
 
@@ -353,7 +373,7 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
           <Boton
             type="submit"
             cargando={crear.isPending}
-            disabled={contrasenaCorta || noCoincide || (rucCompleto && !rucValido)}
+            disabled={contrasenaCorta || noCoincide || !rucUtilizable}
           >
             Crear veterinaria
           </Boton>
@@ -371,11 +391,14 @@ function ModalEditarEmpresa({
   onCerrar: () => void
 }) {
   const actualizar = empresasApi.useActualizar()
+  const cambiarClaveAdmin = empresaAdminApi.useCambiarClaveAdmin()
   const [ruc, setRuc] = useState('')
   const [razonSocial, setRazonSocial] = useState('')
   const [direccion, setDireccion] = useState('')
   const [correo, setCorreo] = useState('')
   const [telefono, setTelefono] = useState('')
+  const [nuevaClaveAdmin, setNuevaClaveAdmin] = useState('')
+  const [confirmarClaveAdmin, setConfirmarClaveAdmin] = useState('')
 
   useEffect(() => {
     if (empresa) {
@@ -384,17 +407,25 @@ function ModalEditarEmpresa({
       setDireccion(empresa.direccion)
       setCorreo(empresa.correo ?? '')
       setTelefono(empresa.telefono ?? '')
+      setNuevaClaveAdmin('')
+      setConfirmarClaveAdmin('')
     }
   }, [empresa])
 
   function cerrarYLimpiar() {
     actualizar.reset()
+    cambiarClaveAdmin.reset()
     onCerrar()
   }
 
   const rucCompleto = ruc.length === 13
   const rucValido = rucCompleto && rucEcuatorianoValido(ruc)
   const errorRuc = rucCompleto && !rucValido ? 'El RUC ecuatoriano no es válido' : undefined
+
+  // El cambio de contraseña es opcional: solo se envía si se escribió algo.
+  const claveCorta = nuevaClaveAdmin.length > 0 && nuevaClaveAdmin.length < 6
+  const claveNoCoincide =
+    confirmarClaveAdmin.length > 0 && confirmarClaveAdmin !== nuevaClaveAdmin
 
   function enviar(e: FormEvent) {
     e.preventDefault()
@@ -411,7 +442,18 @@ function ModalEditarEmpresa({
           activo: empresa.activo,
         },
       },
-      { onSuccess: cerrarYLimpiar },
+      {
+        onSuccess: () => {
+          if (nuevaClaveAdmin) {
+            cambiarClaveAdmin.mutate(
+              { idEmpresa: empresa.idEmpresa, datos: { nuevaClave: nuevaClaveAdmin } },
+              { onSuccess: cerrarYLimpiar },
+            )
+          } else {
+            cerrarYLimpiar()
+          }
+        },
+      },
     )
   }
 
@@ -462,13 +504,53 @@ function ModalEditarEmpresa({
           />
         </Campo>
 
+        <div className="space-y-4 rounded-lg border border-slate-200 p-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <KeyRound className="h-3.5 w-3.5" /> Contraseña del Administrador Local
+          </p>
+          <p className="text-xs text-slate-400">
+            Opcional. Déjalo en blanco para no cambiarla.
+          </p>
+          <Campo
+            etiqueta="Nueva contraseña"
+            ayuda="Mínimo 6 caracteres"
+            error={claveCorta ? 'La contraseña debe tener al menos 6 caracteres' : undefined}
+          >
+            <InputContrasena
+              value={nuevaClaveAdmin}
+              onChange={(e) => setNuevaClaveAdmin(e.target.value)}
+              maxLength={255}
+            />
+          </Campo>
+          <Campo
+            etiqueta="Confirmar contraseña"
+            error={claveNoCoincide ? 'Las contraseñas no coinciden' : undefined}
+          >
+            <InputContrasena
+              value={confirmarClaveAdmin}
+              onChange={(e) => setConfirmarClaveAdmin(e.target.value)}
+              maxLength={255}
+            />
+          </Campo>
+        </div>
+
         {actualizar.error && <MensajeError error={actualizar.error} />}
+        {cambiarClaveAdmin.error && <MensajeError error={cambiarClaveAdmin.error} />}
 
         <div className="flex justify-end gap-2 pt-2">
           <Boton type="button" variante="secundario" onClick={cerrarYLimpiar}>
             Cancelar
           </Boton>
-          <Boton type="submit" cargando={actualizar.isPending} disabled={rucCompleto && !rucValido}>
+          <Boton
+            type="submit"
+            cargando={actualizar.isPending || cambiarClaveAdmin.isPending}
+            disabled={
+              (rucCompleto && !rucValido) ||
+              claveCorta ||
+              claveNoCoincide ||
+              (nuevaClaveAdmin.length > 0 && confirmarClaveAdmin.length === 0)
+            }
+          >
             Guardar cambios
           </Boton>
         </div>

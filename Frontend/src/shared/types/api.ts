@@ -76,6 +76,29 @@ export interface NotificarBloqueoRequest {
   usuario: string
 }
 
+export interface RecuperarPasswordRequest {
+  correo: string
+}
+
+export interface RestablecerPasswordRequest {
+  token: string
+  nuevaClave: string
+}
+
+export interface CambiarClaveAdminRequest {
+  nuevaClave: string
+}
+
+/** GET /api/empresas/validar-ruc?ruc=... (dto.ValidacionRucResponse) */
+export interface ValidacionRuc {
+  ruc: string
+  formatoValido: boolean
+  existeEnSri: boolean
+  registradoEnSistema: boolean
+  disponibleParaRegistro: boolean
+  mensaje?: string | null
+}
+
 /** Respuesta paginada genérica (ver PaginaResponse<T> en el backend). */
 export interface PaginaResponse<T> {
   contenido: T[]
@@ -156,7 +179,22 @@ export interface Veterinario {
   idVeterinario: Uuid
   idUsuario: Uuid
   idEmpresa: Uuid
+  codigoVeterinario: string | null
   especialidad: string | null
+}
+
+export const ESTADOS_MENSUALIDAD = ['PENDIENTE', 'PAGADA', 'VENCIDA'] as const
+export type EstadoMensualidad = (typeof ESTADOS_MENSUALIDAD)[number]
+
+export interface MensualidadEmpresa {
+  idMensualidad: Uuid
+  idEmpresa: Uuid
+  periodo: string
+  valor: number
+  fechaVencimiento: IsoDate
+  fechaPago: IsoDate | null
+  estado: EstadoMensualidad | string
+  observacion: string | null
 }
 
 /* ----------------------------------------------------------------- clínica */

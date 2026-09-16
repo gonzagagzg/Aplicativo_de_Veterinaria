@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import { crearHooksCrud } from './crud'
 import type {
+  CambiarClaveAdminRequest,
   Categoria,
   Cita,
   Cliente,
@@ -12,6 +13,7 @@ import type {
   HistorialClinico,
   Mascota,
   MascotaVacuna,
+  MensualidadEmpresa,
   MovimientoInventario,
   Permiso,
   Producto,
@@ -24,6 +26,7 @@ import type {
   Usuario,
   Uuid,
   Vacuna,
+  ValidacionRuc,
   Veterinario,
 } from '@/shared/types/api'
 
@@ -101,6 +104,54 @@ export const empresaAdminApi = {
       queryKey: ['empresas', idEmpresa, 'usuarios'],
       queryFn: () => api.get<Usuario[]>(`/api/usuarios/empresa/${idEmpresa}`),
       enabled: !!idEmpresa,
+    }),
+
+  // GET /api/empresas/validar-ruc?ruc=... — comprueba formato, existencia
+  // real en el SRI y disponibilidad (que no esté ya registrado).
+  useValidarRuc: (ruc: string | undefined) =>
+    useQuery<ValidacionRuc>({
+      queryKey: ['empresas', 'validar-ruc', ruc],
+      queryFn: () => api.get<ValidacionRuc>('/api/empresas/validar-ruc', { ruc }),
+      enabled: !!ruc && ruc.length === 13,
+      retry: false,
+    }),
+
+  // PUT /api/empresas/{idEmpresa}/contrasena-admin — SuperUsuario cambia la
+  // contraseña del Administrador Local de la veterinaria.
+  useCambiarClaveAdmin: () => {
+    const qc = useQueryClient()
+    return useMutation<void, Error, { idEmpresa: Uuid; datos: CambiarClaveAdminRequest }>({
+      mutationFn: ({ idEmpresa, datos }) =>
+        api.put<void>(`/api/empresas/${idEmpresa}/contrasena-admin`, datos),
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['empresas'] }),
+    })
+  },
+}
+
+/**
+ * GET /api/usuarios/veterinarios-disponibles (UsuarioServlet) — usuarios con
+ * rol Veterinario de la propia empresa (resuelta desde el JWT) que todavía
+ * no tienen un registro en `veterinario`. Reemplaza el filtrado manual en
+ * el cliente que antes hacía PaginaVeterinarios.
+ */
+export function useVeterinariosDisponibles() {
+  return useQuery<Usuario[]>({
+    queryKey: ['usuarios', 'veterinarios-disponibles'],
+    queryFn: () => api.get<Usuario[]>('/api/usuarios/veterinarios-disponibles'),
+  })
+}
+
+/**
+ * Mensualidades/pagos de la aplicación (mensualidad_empresa). El backend
+ * expone rutas distintas para Administrador Local (siempre su propia
+ * empresa, resuelta desde el JWT) y SuperUsuario (todas, por empresa).
+ */
+export const mensualidadesApi = {
+  // GET /api/mensualidades — Administrador Local: solo las de su empresa.
+  useMisMensualidades: () =>
+    useQuery<MensualidadEmpresa[]>({
+      queryKey: ['mensualidades', 'propias'],
+      queryFn: () => api.get<MensualidadEmpresa[]>('/api/mensualidades'),
     }),
 }
 

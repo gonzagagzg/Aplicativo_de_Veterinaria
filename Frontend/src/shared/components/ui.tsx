@@ -1,5 +1,5 @@
-import { forwardRef, type ReactNode } from 'react'
-import { Loader2, X } from 'lucide-react'
+import { forwardRef, useState, type ReactNode } from 'react'
+import { Eye, EyeOff, Loader2, X } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 
 /* --------------------------------------------------------------- Button */
@@ -65,6 +65,29 @@ export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<H
   ),
 )
 Select.displayName = 'Select'
+
+/** Input de contraseña con ícono de ojo para mostrar/ocultar el valor. */
+export const InputContrasena = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(({ className, ...props }, ref) => {
+  const [mostrar, setMostrar] = useState(false)
+  return (
+    <div className="relative">
+      <Input ref={ref} type={mostrar ? 'text' : 'password'} className={cn('pr-10', className)} {...props} />
+      <button
+        type="button"
+        onClick={() => setMostrar((v) => !v)}
+        className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+        tabIndex={-1}
+        aria-label={mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+      >
+        {mostrar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  )
+})
+InputContrasena.displayName = 'InputContrasena'
 
 export const TextArea = forwardRef<
   HTMLTextAreaElement,

@@ -2,6 +2,8 @@ import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from './layout/AppLayout'
 import { PaginaInicio } from '@/features/inicio/PaginaInicio'
 import { PaginaAcceso } from '@/features/acceso/PaginaAcceso'
+import { PaginaRecuperarPassword } from '@/features/acceso/PaginaRecuperarPassword'
+import { PaginaRestablecerPassword } from '@/features/acceso/PaginaRestablecerPassword'
 import { PaginaPanel } from '@/features/panel/PaginaPanel'
 import { PaginaCitas } from '@/features/citas/PaginaCitas'
 import { PaginaClientes } from '@/features/clientes/PaginaClientes'
@@ -17,6 +19,7 @@ import { PaginaUsuarios } from '@/features/admin/PaginaUsuarios'
 import { PaginaVeterinarios } from '@/features/admin/PaginaVeterinarios'
 import { PaginaAccesos } from '@/features/admin/PaginaAccesos'
 import { PaginaEmpresas } from '@/features/admin/PaginaEmpresas'
+import { PaginaMensualidades } from '@/features/mensualidades/PaginaMensualidades'
 import { esSuperUsuario, useSesion } from '@/shared/session/sesion'
 import { alExpirarSesion } from '@/shared/api/client'
 
@@ -46,6 +49,8 @@ function RequiereSuperUsuario({ children }: { children: React.ReactNode }) {
 export const router = createBrowserRouter([
   { path: '/', element: <PaginaInicio /> },
   { path: '/acceso', element: <PaginaAcceso /> },
+  { path: '/recuperar-password', element: <PaginaRecuperarPassword /> },
+  { path: '/restablecer-password', element: <PaginaRestablecerPassword /> },
   {
     path: '/app',
     element: (
@@ -68,6 +73,7 @@ export const router = createBrowserRouter([
       { path: 'usuarios', element: <PaginaUsuarios /> },
       { path: 'veterinarios', element: <PaginaVeterinarios /> },
       { path: 'accesos', element: <PaginaAccesos /> },
+      { path: 'mensualidades', element: <PaginaMensualidades /> },
       {
         path: 'empresas',
         element: (

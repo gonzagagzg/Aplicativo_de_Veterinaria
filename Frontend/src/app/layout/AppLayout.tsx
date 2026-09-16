@@ -34,6 +34,10 @@ interface ItemNav {
    */
   modulo: string | null
   soloSuperUsuario?: boolean
+  /** GET /api/mensualidades resuelve la empresa desde el JWT del Administrador
+   * Local; el SuperUsuario no tiene una empresa propia, así que este ítem no
+   * le aplica (ver mensualidadesApi.useMisMensualidades). */
+  ocultoParaSuperUsuario?: boolean
 }
 
 const SECCIONES: { titulo: string; items: ItemNav[] }[] = [
@@ -55,6 +59,18 @@ const SECCIONES: { titulo: string; items: ItemNav[] }[] = [
       },
       { ruta: '/app/vacunacion', etiqueta: 'Vacunación', Icono: Syringe, modulo: 'MASCOTAS' },
       { ruta: '/app/recetas', etiqueta: 'Recetas', Icono: ClipboardList, modulo: null },
+    ],
+  },
+  {
+    titulo: 'Cuenta',
+    items: [
+      {
+        ruta: '/app/mensualidades',
+        etiqueta: 'Mensualidades',
+        Icono: Receipt,
+        modulo: 'MENSUALIDADES',
+        ocultoParaSuperUsuario: true,
+      },
     ],
   },
   {
@@ -93,36 +109,21 @@ export function AppLayout() {
   const { rol, nombreUsuario, limpiar } = useSesion()
   const permisos = usePermisos()
   const esSuper = esSuperUsuario(rol)
-/**
-  const secciones = SECCIONES.map((seccion) => ({
-    ...seccion,
-    items: seccion.items.filter((item) => {
-      if (item.soloSuperUsuario) return esSuper
-      if (item.modulo === null) return true
-      return permisos.tieneAccesoAModulo(item.modulo)
-    }),
-  })).filter((seccion) => seccion.items.length > 0)
-*/
-  const secciones = SECCIONES
 
-   .filter((seccion) => {
-   if (esSuper) {
-   return seccion.titulo === 'Configuración'
-   }
-   return true
-   })
-
-   .map((seccion) => ({
-
-   ...seccion,
-   items: seccion.items.filter((item) => {
-   if (item.soloSuperUsuario) return esSuper
-   if (item.modulo === null) return true
-   return permisos.tieneAccesoAModulo(item.modulo)
-   }),
-   }))
-
-   .filter((seccion) => seccion.items.length > 0)
+  // El SuperUsuario no opera dentro de una veterinaria concreta: solo ve la
+  // sección "Configuración" (Veterinarias/SaaS, etc.), el resto del menú
+  // clínico/comercial no le aplica.
+  const secciones = SECCIONES.filter((seccion) => !esSuper || seccion.titulo === 'Configuración')
+    .map((seccion) => ({
+      ...seccion,
+      items: seccion.items.filter((item) => {
+        if (item.soloSuperUsuario) return esSuper
+        if (item.ocultoParaSuperUsuario && esSuper) return false
+        if (item.modulo === null) return true
+        return permisos.tieneAccesoAModulo(item.modulo)
+      }),
+    }))
+    .filter((seccion) => seccion.items.length > 0)
 
   return (
     <>

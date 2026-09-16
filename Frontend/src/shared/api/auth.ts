@@ -1,6 +1,12 @@
 import { useMutation } from '@tanstack/react-query'
 import { api } from './client'
-import type { LoginRequest, LoginResponse, NotificarBloqueoRequest } from '@/shared/types/api'
+import type {
+  LoginRequest,
+  LoginResponse,
+  NotificarBloqueoRequest,
+  RecuperarPasswordRequest,
+  RestablecerPasswordRequest,
+} from '@/shared/types/api'
 
 /** POST /api/auth/login — único endpoint público, sin Authorization. */
 export function useLogin() {
@@ -13,5 +19,19 @@ export function useLogin() {
 export function useNotificarBloqueo() {
   return useMutation<void, Error, NotificarBloqueoRequest>({
     mutationFn: (body) => api.post<void>('/api/auth/notificar-bloqueo', body),
+  })
+}
+
+/** POST /api/auth/recuperar-password — envía el correo con el token de recuperación. */
+export function useRecuperarPassword() {
+  return useMutation<void, Error, RecuperarPasswordRequest>({
+    mutationFn: (datos) => api.post<void>('/api/auth/recuperar-password', datos),
+  })
+}
+
+/** POST /api/auth/restablecer-password — consume el token y fija la nueva clave. */
+export function useRestablecerPassword() {
+  return useMutation<void, Error, RestablecerPasswordRequest>({
+    mutationFn: (datos) => api.post<void>('/api/auth/restablecer-password', datos),
   })
 }

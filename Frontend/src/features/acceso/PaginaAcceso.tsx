@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { HeartPulse, LockKeyhole, ShieldAlert } from 'lucide-react'
 import { useLogin, useNotificarBloqueo } from '@/shared/api/auth'
 import { ApiError } from '@/shared/api/client'
-import { Boton, Campo, Input, Modal } from '@/shared/components/ui'
+import { Boton, Campo, Input, InputContrasena, Modal } from '@/shared/components/ui'
 import { useSesion } from '@/shared/session/sesion'
 
 /**
@@ -126,14 +126,19 @@ export function PaginaAcceso() {
             </Campo>
 
             <Campo etiqueta="Contraseña" requerido>
-              <Input
-                type="password"
+              <InputContrasena
                 autoComplete="current-password"
                 value={clave}
                 onChange={(e) => setClave(e.target.value)}
                 placeholder="••••••••"
               />
             </Campo>
+
+            <div className="flex justify-end">
+              <Link to="/recuperar-password" className="text-xs font-medium text-brand-600 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
 
             {!bloqueo && mensajeError && (
               <div className="flex gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
