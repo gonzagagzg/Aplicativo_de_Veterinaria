@@ -794,10 +794,51 @@ public class EmpresaServlet extends HttpServlet {
 
             exigirSuperUsuario(req);
 
-            HttpUtil.error(
+            Autorizacion.exigir(
+                    req,
+                    "EMPRESAS",
+                    "ELIMINAR"
+            );
+
+            String[] partes =
+                    partesRuta(req);
+
+            if (partes.length != 1) {
+
+                HttpUtil.error(
+                        resp,
+                        400,
+                        "Identificador de la veterinaria obligatorio"
+                );
+
+                return;
+            }
+
+            UUID idEmpresa =
+                    UUID.fromString(
+                            partes[0]
+                    );
+
+            if (!service.eliminar(
+                    idEmpresa
+            )) {
+
+                HttpUtil.error(
+                        resp,
+                        404,
+                        "Veterinaria no encontrada o ya eliminada"
+                );
+
+                return;
+            }
+
+            HttpUtil.json(
                     resp,
-                    405,
-                    "Las empresas no se eliminan. Utilice activar o desactivar."
+                    200,
+                    ApiResponse.ok(
+                            "Veterinaria eliminada correctamente",
+                            null
+                    )
             );
 
         } catch (SecurityException e) {
@@ -806,6 +847,32 @@ public class EmpresaServlet extends HttpServlet {
                     resp,
                     403,
                     e.getMessage()
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            HttpUtil.error(
+                    resp,
+                    400,
+                    e.getMessage() == null
+                            ? "Datos inválidos"
+                            : e.getMessage()
+            );
+
+        } catch (SQLException e) {
+
+            HttpUtil.error(
+                    resp,
+                    SqlErrorUtil.estadoHttp(e),
+                    e.getMessage()
+            );
+
+        } catch (Exception e) {
+
+            HttpUtil.error(
+                    resp,
+                    500,
+                    "Error interno: " + e.getMessage()
             );
         }
     }
@@ -845,6 +912,7 @@ public class EmpresaServlet extends HttpServlet {
     // /UUID/activar              -> [UUID, activar]
     // /UUID/desactivar           -> [UUID, desactivar]
     // /UUID/contrasena-admin     -> [UUID, contrasena-admin]
+    // DELETE /UUID                -> soft delete de la veterinaria
     // =========================================================
 
     private String[] partesRuta(

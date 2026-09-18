@@ -31,6 +31,7 @@ public class EmpresaDAO {
                     telefono,
                     activo
                 FROM empresa
+                WHERE eliminado = FALSE
                 ORDER BY razon_social
                 """;
 
@@ -75,6 +76,7 @@ public class EmpresaDAO {
                     activo
                 FROM empresa
                 WHERE id_empresa = ?
+                  AND eliminado = FALSE
                 """;
 
         try (
@@ -322,6 +324,7 @@ public class EmpresaDAO {
                     telefono = ?,
                     activo = ?
                 WHERE id_empresa = ?
+                  AND eliminado = FALSE
                 """;
 
         try (
@@ -357,6 +360,7 @@ public class EmpresaDAO {
                 UPDATE empresa
                 SET activo = ?
                 WHERE id_empresa = ?
+                  AND eliminado = FALSE
                 """;
 
         try (
@@ -374,6 +378,40 @@ public class EmpresaDAO {
 
             ps.setObject(
                     2,
+                    idEmpresa
+            );
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================================================
+    // SOFT DELETE
+    // =========================================================
+
+    public boolean softDelete(
+            UUID idEmpresa
+    ) throws SQLException {
+
+        String sql = """
+                UPDATE empresa
+                SET eliminado = TRUE,
+                    activo = FALSE,
+                    fecha_eliminacion = CURRENT_TIMESTAMP
+                WHERE id_empresa = ?
+                  AND eliminado = FALSE
+                """;
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setObject(
+                    1,
                     idEmpresa
             );
 

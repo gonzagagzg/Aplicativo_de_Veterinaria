@@ -139,6 +139,15 @@ WHERE rp.id_rol = 2
   AND UPPER(p.modulo) = 'MENSUALIDADES'
 ORDER BY p.id_permiso;
 
+-- ============================================================
+-- ELIMINACIÓN LÓGICA DE VETERINARIAS
+-- ============================================================
+
+ALTER TABLE empresa
+ADD COLUMN IF NOT EXISTS eliminado BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE empresa
+ADD COLUMN IF NOT EXISTS fecha_eliminacion TIMESTAMP NULL;
 
 -- ============================================================
 -- FIN DE ACTUALIZACIÓN

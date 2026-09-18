@@ -19,6 +19,11 @@ import java.util.regex.Pattern;
 
 public class EmpresaService {
 
+
+    private static final UUID ID_EMPRESA_ADMINISTRADOR =
+            UUID.fromString("00000000-0000-0000-0000-000000000000");
+
+
     private final EmpresaDAO dao =
             new EmpresaDAO();
 
@@ -567,6 +572,35 @@ public class EmpresaService {
     }
 
     // =========================================================
+    // ELIMINAR EMPRESA (SOFT DELETE)
+    // =========================================================
+
+    public boolean eliminar(
+            UUID idEmpresa
+    ) throws SQLException {
+
+        if (idEmpresa == null) {
+            throw new IllegalArgumentException(
+                    "La veterinaria es obligatoria"
+            );
+        }
+
+        if (ID_EMPRESA_ADMINISTRADOR.equals(idEmpresa)) {
+            throw new IllegalArgumentException(
+                    "La empresa ADMINISTRADOR no puede eliminarse"
+            );
+        }
+
+        if (dao.buscarPorId(idEmpresa).isEmpty()) {
+            return false;
+        }
+
+        return dao.softDelete(
+                idEmpresa
+        );
+    }
+
+    // =========================================================
     // VALIDAR DATOS EMPRESA
     // =========================================================
 
@@ -663,6 +697,15 @@ public class EmpresaService {
 
                 throw new IllegalArgumentException(
                         "El correo electrónico no es válido"
+                );
+            }
+
+            // Solo se permiten correos Gmail y Outlook.
+            if (!correo.endsWith("@gmail.com")
+                    && !correo.endsWith("@outlook.com")) {
+
+                throw new IllegalArgumentException(
+                        "Solo se permiten correos con dominio @gmail.com o @outlook.com"
                 );
             }
 

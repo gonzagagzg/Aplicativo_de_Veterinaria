@@ -9,6 +9,7 @@ import {
   Plus,
   Power,
   PowerOff,
+  Trash2,
   Users,
   XCircle,
 } from 'lucide-react'
@@ -29,6 +30,12 @@ import type { Empresa, EmpresaConAdmin, Rol, Uuid, Usuario } from '@/shared/type
 import { formatearMoneda } from '@/shared/lib/utils'
 import { rucEcuatorianoValido } from '@/shared/lib/sri'
 
+const correoVeterinariaValido = (correo: string) => {
+  const correoLimpio = correo.trim().toLowerCase()
+  if (!correoLimpio) return true
+  return /^[A-Za-z0-9+_.-]+@(gmail\.com|outlook\.com)$/.test(correoLimpio)
+}
+
 /**
  * Panel exclusivo de SuperUsuario: todas las veterinarias del SaaS,
  * alta de nuevas y activar/desactivar (bloqueo por falta de pago).
@@ -40,6 +47,7 @@ export function PaginaEmpresas() {
   const lista = empresasApi.useLista()
   const activar = empresaAdminApi.useActivar()
   const desactivar = empresaAdminApi.useDesactivar()
+  const eliminar = empresasApi.useEliminar()
 
   const [modalNuevaAbierto, setModalNuevaAbierto] = useState(false)
   const [idResumen, setIdResumen] = useState<Uuid | null>(null)
@@ -77,7 +85,7 @@ export function PaginaEmpresas() {
         header: '',
         cell: ({ row }) => {
           const empresa = row.original
-          const enCurso = activar.isPending || desactivar.isPending
+          const enCurso = activar.isPending || desactivar.isPending || eliminar.isPending
           return (
             <div className="flex justify-end gap-1.5">
               <button
@@ -125,12 +133,30 @@ export function PaginaEmpresas() {
                   <Power className="h-4 w-4" />
                 </button>
               )}
+              {empresa.idEmpresa !== '00000000-0000-0000-0000-000000000000' && (
+                <button
+                  type="button"
+                  disabled={enCurso}
+                  onClick={() => {
+                    const confirmado = window.confirm(
+                      `¿Eliminar la veterinaria "${empresa.razonSocial}"?\n\nEsta acción la ocultará del sistema, pero conservará sus datos en la base de datos.`,
+                    )
+                    if (confirmado) {
+                      eliminar.mutate(empresa.idEmpresa)
+                    }
+                  }}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+                  title="Eliminar veterinaria"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           )
         },
       },
     ],
-    [activar, desactivar],
+    [activar, desactivar, eliminar],
   )
 
   return (
@@ -158,9 +184,9 @@ export function PaginaEmpresas() {
         />
       )}
 
-      {(activar.error || desactivar.error) && (
+      {(activar.error || desactivar.error || eliminar.error) && (
         <div className="mt-3">
-          <MensajeError error={activar.error ?? desactivar.error} />
+          <MensajeError error={activar.error ?? desactivar.error ?? eliminar.error} />
         </div>
       )}
 
@@ -215,6 +241,11 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
   const contrasenaCorta = adminContrasena.length > 0 && adminContrasena.length < 6
   const noCoincide =
     confirmarContrasena.length > 0 && confirmarContrasena !== adminContrasena
+
+  const correoInvalido = correo.length > 0 && !correoVeterinariaValido(correo)
+  const errorCorreo = correoInvalido
+    ? 'Solo se permiten correos con dominio @gmail.com o @outlook.com'
+    : undefined
 
   function enviar(e: FormEvent) {
     e.preventDefault()
@@ -294,13 +325,17 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
               required
             />
           </Campo>
-          <Campo etiqueta="Correo">
+          <Campo
+            etiqueta="Correo"
+            ayuda="Solo se permiten correos @gmail.com o @outlook.com"
+            error={errorCorreo}
+          >
             <Input
               type="email"
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
               maxLength={100}
-              placeholder="contacto@veterinaria.com"
+              placeholder="contacto@gmail.com"
             />
           </Campo>
           <Campo etiqueta="Teléfono">
@@ -373,7 +408,7 @@ function ModalNuevaEmpresa({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
           <Boton
             type="submit"
             cargando={crear.isPending}
-            disabled={contrasenaCorta || noCoincide || !rucUtilizable}
+            disabled={contrasenaCorta || noCoincide || !rucUtilizable || correoInvalido}
           >
             Crear veterinaria
           </Boton>
@@ -426,6 +461,11 @@ function ModalEditarEmpresa({
   const claveCorta = nuevaClaveAdmin.length > 0 && nuevaClaveAdmin.length < 6
   const claveNoCoincide =
     confirmarClaveAdmin.length > 0 && confirmarClaveAdmin !== nuevaClaveAdmin
+
+  const correoInvalido = correo.length > 0 && !correoVeterinariaValido(correo)
+  const errorCorreo = correoInvalido
+    ? 'Solo se permiten correos con dominio @gmail.com o @outlook.com'
+    : undefined
 
   function enviar(e: FormEvent) {
     e.preventDefault()
@@ -485,13 +525,17 @@ function ModalEditarEmpresa({
             required
           />
         </Campo>
-        <Campo etiqueta="Correo">
+        <Campo
+          etiqueta="Correo"
+          ayuda="Solo se permiten correos @gmail.com o @outlook.com"
+          error={errorCorreo}
+        >
           <Input
             type="email"
             value={correo}
             onChange={(e) => setCorreo(e.target.value)}
             maxLength={100}
-            placeholder="contacto@veterinaria.com"
+            placeholder="contacto@gmail.com"
           />
         </Campo>
         <Campo etiqueta="Teléfono">
@@ -546,6 +590,7 @@ function ModalEditarEmpresa({
             cargando={actualizar.isPending || cambiarClaveAdmin.isPending}
             disabled={
               (rucCompleto && !rucValido) ||
+              correoInvalido ||
               claveCorta ||
               claveNoCoincide ||
               (nuevaClaveAdmin.length > 0 && confirmarClaveAdmin.length === 0)
