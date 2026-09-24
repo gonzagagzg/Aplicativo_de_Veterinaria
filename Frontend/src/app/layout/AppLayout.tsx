@@ -110,15 +110,20 @@ export function AppLayout() {
   const permisos = usePermisos()
   const esSuper = esSuperUsuario(rol)
 
-  const secciones = SECCIONES.map((seccion) => ({
-    ...seccion,
-    items: seccion.items.filter((item) => {
-      if (item.soloSuperUsuario) return esSuper
-      if (item.ocultoParaSuperUsuario && esSuper) return false
-      if (item.modulo === null) return true
-      return permisos.tieneAccesoAModulo(item.modulo)
-    }),
-  })).filter((seccion) => seccion.items.length > 0)
+  // El SuperUsuario no opera dentro de una veterinaria concreta: solo ve la
+  // sección "Configuración" (Veterinarias/SaaS, etc.), el resto del menú
+  // clínico/comercial no le aplica.
+  const secciones = SECCIONES.filter((seccion) => !esSuper || seccion.titulo === 'Configuración')
+    .map((seccion) => ({
+      ...seccion,
+      items: seccion.items.filter((item) => {
+        if (item.soloSuperUsuario) return esSuper
+        if (item.ocultoParaSuperUsuario && esSuper) return false
+        if (item.modulo === null) return true
+        return permisos.tieneAccesoAModulo(item.modulo)
+      }),
+    }))
+    .filter((seccion) => seccion.items.length > 0)
 
   return (
     <>

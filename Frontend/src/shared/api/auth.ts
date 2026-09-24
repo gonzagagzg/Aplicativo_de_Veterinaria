@@ -3,6 +3,7 @@ import { api } from './client'
 import type {
   LoginRequest,
   LoginResponse,
+  NotificarBloqueoRequest,
   RecuperarPasswordRequest,
   RestablecerPasswordRequest,
 } from '@/shared/types/api'
@@ -11,6 +12,13 @@ import type {
 export function useLogin() {
   return useMutation<LoginResponse, Error, LoginRequest>({
     mutationFn: (credenciales) => api.post<LoginResponse>('/api/auth/login', credenciales),
+  })
+}
+
+/** POST /api/auth/notificar-bloqueo — público, el usuario bloqueado no tiene token. */
+export function useNotificarBloqueo() {
+  return useMutation<void, Error, NotificarBloqueoRequest>({
+    mutationFn: (body) => api.post<void>('/api/auth/notificar-bloqueo', body),
   })
 }
 

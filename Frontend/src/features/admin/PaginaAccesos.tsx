@@ -132,7 +132,10 @@ export function PaginaAccesos() {
                 — Seleccionar rol —
               </option>
 
-              {(roles.data ?? []).map((r) => (
+              {(roles.data ?? [])
+                  .filter((r) => r.nombre !== 'Administrador Global' && r.nombre !== 'SuperUsuario')
+                  .map((r) => (
+
                   <option
                       key={r.idRol}
                       value={r.idRol}

@@ -15,10 +15,32 @@ export function PaginaRecuperarPassword() {
   const recuperar = useRecuperarPassword()
   const [correo, setCorreo] = useState('')
 
+  // =========================================================
+  // VALIDACIÓN DE CORREO
+  // Solo Gmail y Outlook
+  // =========================================================
+  const correoLimpio = correo.trim().toLowerCase()
+
+  const correoValido =
+    correoLimpio.length > 0 &&
+    /^[A-Za-z0-9+_.-]+@(gmail\.com|outlook\.com)$/.test(correoLimpio)
+
+  const correoInvalido =
+    correoLimpio.length > 0 && !correoValido
+
+  const errorCorreo = correoInvalido
+    ? 'Solo se permiten correos con dominio @gmail.com o @outlook.com'
+    : undefined
+
   function enviar(e: FormEvent) {
     e.preventDefault()
-    if (!correo.trim()) return
-    recuperar.mutate({ correo: correo.trim() })
+
+    // No permite enviar si está vacío o tiene un dominio no autorizado
+    if (!correoValido) return
+
+    recuperar.mutate({
+      correo: correoLimpio,
+    })
   }
 
   return (
@@ -28,41 +50,56 @@ export function PaginaRecuperarPassword() {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
             <HeartPulse className="h-5 w-5" />
           </div>
-          <span className="text-sm font-semibold text-slate-900">Veterinaria ITQ</span>
+
+          <span className="text-sm font-semibold text-slate-900">
+            Veterinaria ITQ
+          </span>
         </Link>
 
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Recuperar contraseña</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          Recuperar contraseña
+        </h2>
+
         <p className="mt-1 text-sm text-slate-500">
-          Ingresa el correo asociado a tu cuenta y te enviaremos un enlace para restablecerla.
+          Ingresa el correo asociado a tu cuenta y te enviaremos un enlace para
+          restablecerla.
         </p>
 
         {recuperar.isSuccess ? (
           <div className="mt-6 flex gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
             <MailCheck className="mt-0.5 h-4 w-4 shrink-0" />
+
             <p>
-              Si el correo está registrado, recibirás un mensaje con las instrucciones para
-              restablecer tu contraseña.
+              Si el correo está registrado, recibirás un mensaje con las
+              instrucciones para restablecer tu contraseña.
             </p>
           </div>
         ) : (
           <form className="mt-6 space-y-4" onSubmit={enviar}>
-            <Campo etiqueta="Correo" requerido>
+            <Campo
+              etiqueta="Correo"
+              requerido
+              ayuda="Solo se permiten correos @gmail.com o @outlook.com"
+              error={errorCorreo}
+            >
               <Input
                 type="email"
                 autoFocus
                 autoComplete="email"
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
-                placeholder="correo@veterinaria.com"
+                placeholder="correo@gmail.com"
               />
             </Campo>
 
-            {recuperar.error && <MensajeError error={recuperar.error} />}
+            {recuperar.error && (
+              <MensajeError error={recuperar.error} />
+            )}
 
             <Boton
               type="submit"
               className="w-full"
-              disabled={!correo.trim() || recuperar.isPending}
+              disabled={!correoValido || recuperar.isPending}
               cargando={recuperar.isPending}
             >
               Enviar enlace de recuperación
@@ -70,7 +107,10 @@ export function PaginaRecuperarPassword() {
           </form>
         )}
 
-        <Link to="/acceso" className="mt-6 block text-center text-sm text-brand-600 hover:underline">
+        <Link
+          to="/acceso"
+          className="mt-6 block text-center text-sm text-brand-600 hover:underline"
+        >
           Volver a iniciar sesión
         </Link>
       </div>

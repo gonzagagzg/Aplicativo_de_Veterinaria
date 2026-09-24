@@ -154,3 +154,27 @@ export const mensualidadesApi = {
       queryFn: () => api.get<MensualidadEmpresa[]>('/api/mensualidades'),
     }),
 }
+
+/**
+ * Bloqueo/desbloqueo de usuarios individuales (solo SuperUsuario).
+ * PUT /api/usuarios/{id}/bloquear  — { tipoBloqueo: 'pago' | 'tecnico' }
+ * PUT /api/usuarios/{id}/desbloquear — sin body
+ */
+export const usuarioAdminApi = {
+  useBloquear: () => {
+    const qc = useQueryClient()
+    return useMutation<void, Error, { idUsuario: Uuid; tipoBloqueo: 'pago' | 'tecnico' }>({
+      mutationFn: ({ idUsuario, tipoBloqueo }) =>
+        api.put<void>(`/api/usuarios/${idUsuario}/bloquear`, { tipoBloqueo }),
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['empresas'] }),
+    })
+  },
+
+  useDesbloquear: () => {
+    const qc = useQueryClient()
+    return useMutation<void, Error, Uuid>({
+      mutationFn: (idUsuario) => api.put<void>(`/api/usuarios/${idUsuario}/desbloquear`, undefined),
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['empresas'] }),
+    })
+  },
+}
