@@ -917,9 +917,10 @@ public class EmpresaService {
                     usuario,
                     clave_hash,
                     nombres,
+                    correo,
                     activo
                 )
-                VALUES (?, ?, ?, ?, ?, TRUE)
+                VALUES (?, ?, ?, ?, ?, ?, TRUE)
                 """;
 
         try (
@@ -954,6 +955,14 @@ public class EmpresaService {
                     request
                             .getAdminNombres()
                             .trim()
+            );
+
+            ps.setString(
+                    6,
+                    request
+                            .getCorreo()
+                            .trim()
+                            .toLowerCase()
             );
 
             if (ps.executeUpdate() != 1) {

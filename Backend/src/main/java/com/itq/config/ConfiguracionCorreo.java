@@ -7,90 +7,56 @@ public final class ConfiguracionCorreo {
     }
 
     // =========================================================
-    // VARIABLES DE ENTORNO
+    // CONFIGURACIÓN SMTP DEL PROYECTO
     // =========================================================
 
-    private static String obtenerVariable(
-            String nombre
-    ) {
+    private static final String SMTP_HOST = "smtp.gmail.com";
+    private static final int SMTP_PUERTO = 587;
 
-        String valor =
-                System.getenv(nombre);
+    private static final String SMTP_USUARIO =
+            "itqveterinaria@gmail.com";
 
-        if (valor == null ||
-                valor.isBlank()) {
+    /*
+     * Proyecto académico.
+     * Credencial SMTP utilizada por la cuenta remitente.
+     */
+    private static final String SMTP_CLAVE =
+            "llnhoprqhainbvny";
 
-            throw new IllegalStateException(
-                    "No está configurada la variable de entorno: "
-                            + nombre
-            );
-        }
+    private static final String CORREO_REMITENTE =
+            "itqveterinaria@gmail.com";
 
-        return valor.trim();
-    }
+    private static final String NOMBRE_REMITENTE =
+            "Veterinaria ITQ";
 
-    private static String obtenerVariableOpcional(
-            String nombre,
-            String valorDefecto
-    ) {
+    private static final boolean SMTP_STARTTLS = true;
+    private static final boolean SMTP_AUTH = true;
 
-        String valor =
-                System.getenv(nombre);
-
-        if (valor == null ||
-                valor.isBlank()) {
-
-            return valorDefecto;
-        }
-
-        return valor.trim();
-    }
+    /*
+     * URL del frontend local utilizada dentro
+     * del enlace enviado por correo.
+     */
+    private static final String FRONTEND_URL =
+            "http://localhost:5174";
 
     // =========================================================
     // SMTP
     // =========================================================
 
     public static String getSmtpHost() {
-
-        return obtenerVariable(
-                "VET_SMTP_HOST"
-        );
+        return SMTP_HOST;
     }
 
     public static int getSmtpPuerto() {
-
-        String puerto =
-                obtenerVariableOpcional(
-                        "VET_SMTP_PORT",
-                        "587"
-                );
-
-        try {
-
-            return Integer.parseInt(
-                    puerto
-            );
-
-        } catch (NumberFormatException e) {
-
-            throw new IllegalStateException(
-                    "VET_SMTP_PORT debe ser un número válido"
-            );
-        }
+        return SMTP_PUERTO;
     }
 
     public static String getSmtpUsuario() {
-
-        return obtenerVariable(
-                "VET_SMTP_USER"
-        );
+        return SMTP_USUARIO;
     }
 
     public static String getSmtpClave() {
-
-        return obtenerVariable(
-                "VET_SMTP_PASSWORD"
-        );
+        return SMTP_CLAVE;
     }
 
     // =========================================================
@@ -98,19 +64,11 @@ public final class ConfiguracionCorreo {
     // =========================================================
 
     public static String getCorreoRemitente() {
-
-        return obtenerVariableOpcional(
-                "VET_SMTP_FROM",
-                getSmtpUsuario()
-        );
+        return CORREO_REMITENTE;
     }
 
     public static String getNombreRemitente() {
-
-        return obtenerVariableOpcional(
-                "VET_SMTP_FROM_NAME",
-                "Sistema Veterinario"
-        );
+        return NOMBRE_REMITENTE;
     }
 
     // =========================================================
@@ -118,23 +76,11 @@ public final class ConfiguracionCorreo {
     // =========================================================
 
     public static boolean usarStartTls() {
-
-        return Boolean.parseBoolean(
-                obtenerVariableOpcional(
-                        "VET_SMTP_STARTTLS",
-                        "true"
-                )
-        );
+        return SMTP_STARTTLS;
     }
 
     public static boolean usarAutenticacion() {
-
-        return Boolean.parseBoolean(
-                obtenerVariableOpcional(
-                        "VET_SMTP_AUTH",
-                        "true"
-                )
-        );
+        return SMTP_AUTH;
     }
 
     // =========================================================
@@ -142,23 +88,7 @@ public final class ConfiguracionCorreo {
     // =========================================================
 
     public static String getFrontendUrl() {
-
-        String url =
-                obtenerVariableOpcional(
-                        "VET_FRONTEND_URL",
-                        "http://localhost:5174"
-                );
-
-        while (url.endsWith("/")) {
-
-            url =
-                    url.substring(
-                            0,
-                            url.length() - 1
-                    );
-        }
-
-        return url;
+        return FRONTEND_URL;
     }
 
     // =========================================================

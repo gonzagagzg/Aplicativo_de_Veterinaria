@@ -12,15 +12,34 @@ public final class ConexionBD {
     // DATOS DE CONEXIÓN
     // =========================================================
 
+    /*
+     * La configuración se obtiene de variables de entorno.
+     *
+     * Cada integrante del equipo puede usar sus propias
+     * credenciales locales de PostgreSQL sin modificar este
+     * archivo ni subir contraseñas a GitHub.
+     */
     private static final String URL =
-            "jdbc:postgresql://localhost:5432/Aplicativo_de_Veterinaria";
+            obtenerVariable(
+                    "VET_DB_URL",
+                    "jdbc:postgresql://localhost:5432/Aplicativo_de_Veterinaria"
+            );
 
     private static final String USUARIO =
-            "postgres";
+            obtenerVariable(
+                    "VET_DB_USER",
+                    "postgres"
+            );
 
+    /*
+     * La contraseña NO tiene valor por defecto por seguridad.
+     * Debe existir VET_DB_PASSWORD en la computadora donde
+     * se ejecuta Tomcat.
+     */
     private static final String CONTRASENA =
-            "123456789";
-
+            obtenerVariableObligatoria(
+                    "VET_DB_PASSWORD"
+            );
 
     // =========================================================
     // POOL ÚNICO DE CONEXIONES
@@ -47,8 +66,6 @@ public final class ConexionBD {
                     USUARIO
             );
 
-
-
             config.setPassword(
                     CONTRASENA
             );
@@ -69,18 +86,10 @@ public final class ConexionBD {
             // TAMAÑO DEL POOL
             // -------------------------------------------------
 
-            /*
-             * Máximo de conexiones simultáneas
-             * abiertas hacia PostgreSQL.
-             */
             config.setMaximumPoolSize(
                     10
             );
 
-            /*
-             * Mínimo de conexiones disponibles
-             * en estado idle.
-             */
             config.setMinimumIdle(
                     2
             );
@@ -89,31 +98,14 @@ public final class ConexionBD {
             // TIEMPOS
             // -------------------------------------------------
 
-            /*
-             * Máximo tiempo esperando una conexión
-             * disponible del pool.
-             *
-             * 10 segundos.
-             */
             config.setConnectionTimeout(
                     10_000
             );
 
-            /*
-             * Tiempo máximo de inactividad
-             * antes de liberar una conexión idle.
-             *
-             * 5 minutos.
-             */
             config.setIdleTimeout(
                     300_000
             );
 
-            /*
-             * Vida máxima de una conexión.
-             *
-             * 30 minutos.
-             */
             config.setMaxLifetime(
                     1_800_000
             );
@@ -126,15 +118,6 @@ public final class ConexionBD {
                     "SELECT 1"
             );
 
-            /*
-             * JDBC usa autoCommit=true por defecto.
-             *
-             * Lo mantenemos porque todos los DAO actuales
-             * fueron construidos con ese comportamiento.
-             *
-             * La facturación transaccional cambia
-             * temporalmente a false cuando corresponde.
-             */
             config.setAutoCommit(
                     true
             );
@@ -161,24 +144,56 @@ public final class ConexionBD {
     }
 
     // =========================================================
+    // VARIABLES DE ENTORNO
+    // =========================================================
+
+    private static String obtenerVariable(
+            String nombre,
+            String valorPorDefecto
+    ) {
+
+        String valor =
+                System.getenv(
+                        nombre
+                );
+
+        if (valor == null ||
+                valor.isBlank()) {
+
+            return valorPorDefecto;
+        }
+
+        return valor.trim();
+    }
+
+    private static String obtenerVariableObligatoria(
+            String nombre
+    ) {
+
+        String valor =
+                System.getenv(
+                        nombre
+                );
+
+        if (valor == null ||
+                valor.isBlank()) {
+
+            throw new IllegalStateException(
+                    "Falta configurar la variable de entorno "
+                            + nombre
+            );
+        }
+
+        return valor;
+    }
+
+    // =========================================================
     // OBTENER CONEXIÓN
     // =========================================================
 
     public static Connection obtenerConexion()
             throws SQLException {
 
-        /*
-         * Ahora NO se crea una conexión TCP nueva.
-         *
-         * Hikari entrega una conexión del pool.
-         *
-         * Cuando un DAO ejecuta:
-         *
-         * try (Connection cn = obtenerConexion()) { ... }
-         *
-         * el cn.close() NO destruye realmente la conexión;
-         * la devuelve al pool.
-         */
         return DATA_SOURCE.getConnection();
     }
 
