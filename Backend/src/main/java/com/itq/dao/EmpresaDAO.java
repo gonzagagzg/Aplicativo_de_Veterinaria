@@ -26,6 +26,8 @@ public class EmpresaDAO {
                        ruc,
                        razon_social,
                        direccion,
+                       correo,
+                       telefono,
                        activo
                 FROM empresa
                 WHERE eliminado = FALSE
@@ -67,6 +69,8 @@ public class EmpresaDAO {
                        ruc,
                        razon_social,
                        direccion,
+                       correo,
+                       telefono,
                        activo
                 FROM empresa
                 WHERE id_empresa = ?
@@ -110,9 +114,11 @@ public class EmpresaDAO {
                     ruc,
                     razon_social,
                     direccion,
+                    correo,
+                    telefono,
                     activo
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 RETURNING id_empresa
                 """;
 
@@ -139,8 +145,18 @@ public class EmpresaDAO {
                     obj.getDireccion()
             );
 
-            ps.setBoolean(
+            ps.setString(
                     4,
+                    obj.getCorreo()
+            );
+
+            ps.setString(
+                    5,
+                    obj.getTelefono()
+            );
+
+            ps.setBoolean(
+                    6,
                     obj.isActivo()
             );
 
@@ -179,6 +195,8 @@ public class EmpresaDAO {
                 SET ruc = ?,
                     razon_social = ?,
                     direccion = ?,
+                    correo = ?,
+                    telefono = ?,
                     activo = ?
                 WHERE id_empresa = ?
                   AND eliminado = FALSE
@@ -207,13 +225,23 @@ public class EmpresaDAO {
                     obj.getDireccion()
             );
 
-            ps.setBoolean(
+            ps.setString(
                     4,
+                    obj.getCorreo()
+            );
+
+            ps.setString(
+                    5,
+                    obj.getTelefono()
+            );
+
+            ps.setBoolean(
+                    6,
                     obj.isActivo()
             );
 
             ps.setObject(
-                    5,
+                    7,
                     obj.getIdEmpresa()
             );
 
@@ -294,6 +322,70 @@ public class EmpresaDAO {
     }
 
     // =========================================================
+    // EXISTENCIA (RUC / CORREO / TELÉFONO)
+    // =========================================================
+
+    public boolean existeRuc(
+            String ruc
+    ) throws SQLException {
+
+        return existePorColumna(
+                "ruc",
+                ruc
+        );
+    }
+
+    public boolean existeCorreo(
+            String correo
+    ) throws SQLException {
+
+        return existePorColumna(
+                "correo",
+                correo
+        );
+    }
+
+    public boolean existeTelefono(
+            String telefono
+    ) throws SQLException {
+
+        return existePorColumna(
+                "telefono",
+                telefono
+        );
+    }
+
+    private boolean existePorColumna(
+            String columna,
+            String valor
+    ) throws SQLException {
+
+        String sql =
+                "SELECT 1 FROM empresa WHERE " + columna
+                        + " = ? AND eliminado = FALSE LIMIT 1";
+
+        try (
+                Connection cn =
+                        ConexionBD.obtenerConexion();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    valor
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                return rs.next();
+            }
+        }
+    }
+
+    // =========================================================
     // MAPEO
     // =========================================================
 
@@ -324,6 +416,18 @@ public class EmpresaDAO {
         obj.setDireccion(
                 rs.getString(
                         "direccion"
+                )
+        );
+
+        obj.setCorreo(
+                rs.getString(
+                        "correo"
+                )
+        );
+
+        obj.setTelefono(
+                rs.getString(
+                        "telefono"
                 )
         );
 

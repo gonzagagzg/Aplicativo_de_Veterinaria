@@ -567,6 +567,26 @@ public class EmpresaService {
     }
 
     // =========================================================
+    // ELIMINAR (LÓGICO)
+    // =========================================================
+
+    public boolean eliminar(
+            UUID idEmpresa
+    ) throws SQLException {
+
+        if (idEmpresa == null) {
+
+            throw new IllegalArgumentException(
+                    "La empresa es obligatoria"
+            );
+        }
+
+        return dao.softDelete(
+                idEmpresa
+        );
+    }
+
+    // =========================================================
     // VALIDAR DATOS EMPRESA
     // =========================================================
 

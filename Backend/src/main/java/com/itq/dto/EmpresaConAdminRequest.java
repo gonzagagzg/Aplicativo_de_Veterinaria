@@ -5,6 +5,8 @@ public class EmpresaConAdminRequest {
     private String ruc;
     private String razonSocial;
     private String direccion;
+    private String correo;
+    private String telefono;
     private Boolean activo;
 
     private String adminUsuario;
@@ -36,6 +38,22 @@ public class EmpresaConAdminRequest {
 
     public void setDireccion(String direccion) {
         this.direccion = direccion;
+    }
+
+    public String getCorreo() {
+        return correo;
+    }
+
+    public void setCorreo(String correo) {
+        this.correo = correo;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
     }
 
     public Boolean getActivo() {
